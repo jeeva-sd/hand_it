@@ -1,0 +1,130 @@
+import { randomUUID } from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { StringUtils } from './string.utils';
+
+export const FileUtils = {
+    /**
+     * Generates a unique and slugified filename with timestamp and UUID.
+     * Useful for saving files without collisions.
+     */
+    generateUploadFilename: (originalFilename: string): string => {
+        const uuid = randomUUID();
+        const extension = originalFilename.split('.').pop();
+        const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').replace(/\..+/, '');
+
+        return `${StringUtils.slugify(originalFilename)}-${timestamp}-${uuid}.${extension}`;
+    },
+
+    /**
+     * Reads the content of a file at the given path and returns it as a Buffer.
+     * Throws an error if the file doesn't exist or cannot be read.
+     */
+    readFile: async (filePath: string): Promise<Buffer> => {
+        try {
+            // Check if the file exists
+            await fs.promises.access(filePath, fs.constants.F_OK);
+
+            // Read the file
+            const data = await fs.promises.readFile(filePath);
+            return data; // Return the content as a Buffer
+        } catch (error) {
+            const err = error as NodeJS.ErrnoException;
+            if (err.code === 'ENOENT') {
+                console.error(`File does not exist at ${filePath}`);
+            } else {
+                console.error(`Failed to read file at ${filePath}: ${err.message}`);
+            }
+            throw error;
+        }
+    },
+
+    /**
+     * Converts a byte value into a human-readable format (KB, MB, GB).
+     * Defaults to KB and 2 decimal places.
+     */
+    convertBytes: (bytes: number, unit: 'B' | 'KB' | 'MB' | 'GB' = 'KB', decimals = 5) => {
+        if (bytes === 0) return 0;
+
+        const units = { B: 1, KB: 1024, MB: 1024 * 1024, GB: 1024 * 1024 * 1024 };
+
+        const value = bytes / units[unit];
+        return Number(value.toFixed(decimals));
+    },
+
+    /**
+     * Deletes a file from the file system.
+     */
+    deleteFile: async (filePath: string): Promise<void> => {
+        try {
+            await fs.promises.unlink(filePath);
+        } catch (error) {
+            console.error(`Error deleting file at ${filePath}: ${(error as Error).message}`);
+            throw error;
+        }
+    },
+
+    /**
+     * Checks if a file exists at the given path.
+     */
+    fileExists: async (filePath: string): Promise<boolean> => {
+        try {
+            await fs.promises.access(filePath, fs.constants.F_OK);
+            return true;
+        } catch {
+            return false;
+        }
+    },
+
+    /**
+     * Returns the extension of a file (e.g., .txt, .jpg).
+     */
+    getExtension: (fileName: string): string => {
+        return path.extname(fileName);
+    },
+
+    /**
+     * Returns the file name without its extension.
+     */
+    getBaseName: (fileName: string): string => {
+        return path.basename(fileName, path.extname(fileName));
+    },
+
+    /**
+     * Writes data to a file at a specified path.
+     * Creates the file if it doesn't exist or overwrites it.
+     */
+    writeFile: async (filePath: string, data: string | Buffer): Promise<void> => {
+        try {
+            await fs.promises.writeFile(filePath, data);
+        } catch (error) {
+            console.error(`Error writing to file at ${filePath}: ${(error as Error).message}`);
+            throw error;
+        }
+    },
+
+    /**
+     * Gets the size of the file in bytes.
+     */
+    getFileSize: async (filePath: string): Promise<number> => {
+        try {
+            const stats = await fs.promises.stat(filePath);
+            return stats.size;
+        } catch (error) {
+            console.error(`Error getting size of file at ${filePath}: ${(error as Error).message}`);
+            throw error;
+        }
+    },
+
+    /**
+     * Renames or moves a file from oldPath to newPath.
+     */
+    renameFile: async (oldPath: string, newPath: string): Promise<void> => {
+        try {
+            await fs.promises.rename(oldPath, newPath);
+        } catch (error) {
+            console.error(`Error renaming file from ${oldPath} to ${newPath}: ${(error as Error).message}`);
+            throw error;
+        }
+    }
+};

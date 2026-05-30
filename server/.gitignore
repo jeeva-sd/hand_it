@@ -1,0 +1,14 @@
+node_modules/
+dist/
+coverage/
+.cache/
+.vscode/
+.idea/
+.DS_Store
+.env
+.env.*
+uploads/
+public/*
+!public/public.txt
+!public/logo.svg
+prisma/.prisma/

@@ -1,0 +1,2 @@
+server/envs/** filter=git-crypt diff=git-crypt
+worker/**/.env* filter=git-crypt diff=git-crypt

@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			color: #333;
+			line-height: 1.6;
+			margin: 0;
+			padding: 0;
+		}
+		.container {
+			max-width: 600px;
+			margin: 0 auto;
+			padding: 20px;
+			border: 1px solid #ddd;
+			border-radius: 5px;
+		}
+		.header {
+			text-align: right;
+			margin-bottom: 15px;
+		}
+		.header-logo {
+			width: 80px;
+			height: auto;
+		}
+		h1 {
+			margin: 0 0 10px 0;
+			color: #2c3e50;
+			font-size: 24px;
+		}
+		p {
+			margin: 10px 0;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="header">
+			<img src="{{logoUrl}}" alt="Logo" class="header-logo" />
+		</div>
+		<h1>Welcome, {{titleCase name}}!</h1>
+		<p>Thanks for joining us. We are excited to have you.</p>
+	</div>
+</body>
+</html>

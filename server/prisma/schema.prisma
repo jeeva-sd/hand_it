@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ************************************** Common *****************************************************
+
+enum AuthTokenType {
+  PASSWORD_RESET
+  ACCOUNT_SETUP
+}
+
+model User {
+  id           String      @id @default(cuid())
+  fname        String      @db.VarChar(50)
+  lname        String      @db.VarChar(50)
+  email        String      @unique(map: "uk_user_email") @db.VarChar(255)
+  passwordHash String?     @db.VarChar(255)
+  status       Int?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  authTokens   AuthToken[]
+
+  @@index([fname], map: "idx_user_fname")
+  @@index([lname], map: "idx_user_lname")
+  @@map("users")
+}
+
+model AuthToken {
+  id        String        @id @default(cuid())
+  userId    String
+  tokenHash String        @unique(map: "uk_auth_token_hash") @db.VarChar(128)
+  type      AuthTokenType
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type], map: "idx_auth_token_user_type")
+  @@index([expiresAt], map: "idx_auth_token_expires_at")
+  @@map("auth_tokens")
+}
