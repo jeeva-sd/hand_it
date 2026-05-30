@@ -1,10 +1,11 @@
 import '@fastify/view';
-import { Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { RequestX } from '~/shared/types/request.type';
 import { Sanitize } from '~/system';
 import { AuthService } from './auth.service';
 import { SkipJwtAuth } from './decorators';
+import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 import {
     ForgetPasswordPayload,
     forgetPasswordSchema,
@@ -21,6 +22,13 @@ import {
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
+
+    @HttpCode(200)
+    @UseGuards(JwtAuthGuard)
+    @Get('me')
+    async me(@Req() request: RequestX<unknown>) {
+        return this.authService.getMe(request.user);
+    }
 
     @SkipJwtAuth()
     @Sanitize(signupSchema)

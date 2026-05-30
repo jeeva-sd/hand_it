@@ -38,6 +38,12 @@ type AuthUserResponse = {
     updatedAt: Date;
 };
 
+type LastUsedWorkspaceResponse = {
+    id: string;
+    roleId: string | null;
+    accessId: string | null;
+};
+
 type AuthPageModel = {
     valid: boolean;
     title: string;
@@ -55,6 +61,22 @@ export class AuthService {
         private readonly emailsService: EmailsService,
         @Inject(appConfig.auth.basicJWT.name) private readonly jwtService: JwtService
     ) {}
+
+    async getMe(tokenData?: TokenData) {
+        if (!(tokenData?.sub && tokenData.sub.trim())) {
+            throw new UnauthorizedException('Unauthorized');
+        }
+
+        const user = await this.authRepository.findUserById({ id: tokenData.sub });
+        if (!user) {
+            throw new UnauthorizedException('Unauthorized');
+        }
+
+        return {
+            user: this.mapUser(user),
+            lastUsedWorkspace: this.mapLastUsedWorkspace(tokenData)
+        };
+    }
 
     async signup(payload: SignupPayload) {
         const email = payload.email.toLowerCase().trim();
@@ -214,6 +236,22 @@ export class AuthService {
             status: user.status,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
+        };
+    }
+
+    private mapLastUsedWorkspace(tokenData: TokenData): LastUsedWorkspaceResponse | null {
+        const workspaceId = tokenData.workspaceId?.trim();
+        if (!workspaceId) {
+            return null;
+        }
+
+        const roleId = tokenData.roleId?.trim() || null;
+        const accessId = tokenData.accessId?.trim() || null;
+
+        return {
+            id: workspaceId,
+            roleId,
+            accessId
         };
     }
 
