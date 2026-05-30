@@ -178,9 +178,15 @@ const gracefulShutdownConfigSchema = z.object({
 
 const emailConfigSchema = z
     .object({
-        from: z.email('Invalid from email address'),
-        apiKey: z.string().nonempty('SendGrid API key is required'),
-        enabled: z.boolean()
+        host: z.string().trim().min(1, 'SMTP host is required'),
+        port: z.number().int().min(1).max(65_535),
+        secure: z.boolean(),
+        auth: z.object({
+            user: z.string().trim().min(1, 'SMTP username is required'),
+            pass: z.string().trim().min(1, 'SMTP password is required')
+        }),
+        from: z.string().trim().min(1, 'Sender name or email is required'),
+        enabled: z.boolean().default(true)
     })
     .optional();
 
