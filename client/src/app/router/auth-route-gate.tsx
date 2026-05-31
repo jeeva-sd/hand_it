@@ -1,8 +1,8 @@
-import { Loader2Icon } from "lucide-react"
 import type { ReactNode } from "react"
 import { Navigate, useLocation } from "react-router-dom"
 
 import { buildLoginPath, buildPostLoginPath, getLocationTarget } from "@/app/router/post-login"
+import { RouteLoadingScreen } from "@/app/router/route-loading-screen"
 import { useAuthStore } from "@/stores/auth.store"
 
 type AuthRouteMode = "public" | "private"
@@ -18,14 +18,7 @@ export function AuthRouteGate({ mode, children }: AuthRouteGateProps) {
   const hasCheckedSession = useAuthStore((state) => state.hasCheckedSession)
 
   if (!hasCheckedSession) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          <Loader2Icon className="size-4 animate-spin" />
-          Checking session...
-        </div>
-      </div>
-    )
+    return <RouteLoadingScreen message="Checking session..." />
   }
 
   if (mode === "private" && status !== "authenticated") {

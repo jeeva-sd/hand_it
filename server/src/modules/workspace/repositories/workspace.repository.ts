@@ -15,12 +15,7 @@ type UpdateWorkspaceData = { workspaceId: string; name: string };
 
 type DeleteWorkspaceData = { workspaceId: string };
 
-type CreateProjectData = {
-    workspaceId: string;
-    name: string;
-    description?: string | null;
-    status?: ProjectStatus;
-};
+type CreateProjectData = { workspaceId: string; name: string; description?: string | null; status?: ProjectStatus };
 
 const workspaceSelect = {
     id: true,
@@ -44,14 +39,7 @@ const workspaceMemberListSelect = {
     role: true,
     createdAt: true,
     updatedAt: true,
-    user: {
-        select: {
-            id: true,
-            fname: true,
-            lname: true,
-            email: true
-        }
-    }
+    user: { select: { id: true, fname: true, lname: true, email: true } }
 } satisfies Prisma.WorkspaceMemberSelect;
 
 const projectSelect = {
@@ -130,10 +118,7 @@ export class WorkspaceRepository {
     }
 
     async deleteWorkspace(data: DeleteWorkspaceData, transaction?: PrismaTransaction) {
-        return this.txHandler(transaction).workspace.delete({
-            where: { id: data.workspaceId },
-            select: { id: true }
-        });
+        return this.txHandler(transaction).workspace.delete({ where: { id: data.workspaceId }, select: { id: true } });
     }
 
     async findWorkspaceMemberUserIds(data: { workspaceId: string }, transaction?: PrismaTransaction) {

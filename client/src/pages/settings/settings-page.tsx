@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useEffect, useMemo, useState, type FormEvent } from "react"
+import { useMemo, useState, type FormEvent } from "react"
 import { useNavigate } from "react-router-dom"
 
 import { appPaths } from "@/app/router/paths"
@@ -42,20 +42,23 @@ export function SettingsPage() {
     return workspaces[0]
   }, [activeWorkspaceId, workspaces])
 
-  const [name, setName] = useState("")
-  const [message, setMessage] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const currentWorkspaceId = activeWorkspace?.id ?? ""
+  const [nameDraftByWorkspaceId, setNameDraftByWorkspaceId] = useState<Record<string, string>>({})
+  const [message, setMessage] = useState<{ workspaceId: string; text: string } | null>(null)
+  const [errorMessage, setErrorMessage] = useState<{ workspaceId: string; text: string } | null>(null)
 
-  useEffect(() => {
-    setName(activeWorkspace?.name ?? "")
-    setMessage(null)
-    setErrorMessage(null)
-  }, [activeWorkspace?.id, activeWorkspace?.name])
+  const name = currentWorkspaceId
+    ? (nameDraftByWorkspaceId[currentWorkspaceId] ?? activeWorkspace?.name ?? "")
+    : ""
 
   const updateWorkspaceMutation = useMutation({
     mutationFn: (payload: { workspaceId: string; name: string }) => updateWorkspace(payload.workspaceId, { name: payload.name }),
     onSuccess: async (workspace) => {
       upsertWorkspace(workspace)
+      setNameDraftByWorkspaceId((previous) => ({
+        ...previous,
+        [workspace.id]: workspace.name,
+      }))
 
       if (lastUsedWorkspace?.id === workspace.id) {
         setLastUsedWorkspace({
@@ -66,10 +69,15 @@ export function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
-      setMessage("Workspace updated successfully.")
+      setErrorMessage(null)
+      setMessage({ workspaceId: workspace.id, text: "Workspace updated successfully." })
     },
     onError: (error) => {
-      setErrorMessage(resolveErrorMessage(error, "Unable to update workspace right now."))
+      setMessage(null)
+      setErrorMessage({
+        workspaceId: currentWorkspaceId,
+        text: resolveErrorMessage(error, "Unable to update workspace right now."),
+      })
     },
   })
 
@@ -100,7 +108,11 @@ export function SettingsPage() {
       )
     },
     onError: (error) => {
-      setErrorMessage(resolveErrorMessage(error, "Unable to delete workspace right now."))
+      setMessage(null)
+      setErrorMessage({
+        workspaceId: currentWorkspaceId,
+        text: resolveErrorMessage(error, "Unable to delete workspace right now."),
+      })
     },
   })
 
@@ -117,7 +129,10 @@ export function SettingsPage() {
     const normalizedName = name.trim()
 
     if (normalizedName.length < 2) {
-      setErrorMessage("Workspace name must be at least 2 characters long.")
+      setErrorMessage({
+        workspaceId: currentWorkspaceId,
+        text: "Workspace name must be at least 2 characters long.",
+      })
       return
     }
 
@@ -170,7 +185,16 @@ export function SettingsPage() {
           <Input
             id="workspace-name"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            onChange={(event) => {
+              if (!currentWorkspaceId) {
+                return
+              }
+
+              setNameDraftByWorkspaceId((previous) => ({
+                ...previous,
+                [currentWorkspaceId]: event.target.value,
+              }))
+            }}
             placeholder="Workspace name"
             required
           />
@@ -182,8 +206,8 @@ export function SettingsPage() {
           <span>{activeWorkspace.memberCount} members</span>
         </div>
 
-        {message && <p className="text-sm text-emerald-600">{message}</p>}
-        {errorMessage && <p className="text-sm text-red-600">{errorMessage}</p>}
+        {message?.workspaceId === currentWorkspaceId && <p className="text-sm text-emerald-600">{message.text}</p>}
+        {errorMessage?.workspaceId === currentWorkspaceId && <p className="text-sm text-red-600">{errorMessage.text}</p>}
 
         <Button type="submit" disabled={updateWorkspaceMutation.isPending || deleteWorkspaceMutation.isPending}>
           {updateWorkspaceMutation.isPending ? "Saving..." : "Save Changes"}

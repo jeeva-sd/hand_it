@@ -8,7 +8,6 @@ import {
   normalizeContinuePath,
   readStoredContinuePath,
 } from "@/app/router/post-login"
-import { appConfig } from "@/config"
 import { useWorkspacesQuery } from "@/features/workspace/use-workspaces-query"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
@@ -73,7 +72,7 @@ export function PostLoginResolverPage() {
 
     if (preferredWorkspaceId) {
       clearStoredContinuePath()
-      navigate(continuePath ?? appConfig.auth.redirectAfterLogin, { replace: true })
+      navigate(continuePath ?? appPaths.workspaceProjects(preferredWorkspaceId), { replace: true })
       return
     }
 

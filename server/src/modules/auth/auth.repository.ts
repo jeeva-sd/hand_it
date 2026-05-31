@@ -108,17 +108,7 @@ export class AuthRepository {
         return this.txHandler(transaction).workspaceMember.findFirst({
             where: { userId: data.userId },
             orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
-            select: {
-                workspaceId: true,
-                role: true,
-                workspace: {
-                    select: {
-                        id: true,
-                        name: true,
-                        plan: true
-                    }
-                }
-            }
+            select: { workspaceId: true, role: true, workspace: { select: { id: true, name: true, plan: true } } }
         });
     }
 
@@ -128,17 +118,7 @@ export class AuthRepository {
     ) {
         return this.txHandler(transaction).workspaceMember.findFirst({
             where: { userId: data.userId, workspaceId: data.workspaceId },
-            select: {
-                workspaceId: true,
-                role: true,
-                workspace: {
-                    select: {
-                        id: true,
-                        name: true,
-                        plan: true
-                    }
-                }
-            }
+            select: { workspaceId: true, role: true, workspace: { select: { id: true, name: true, plan: true } } }
         });
     }
 }

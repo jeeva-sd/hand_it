@@ -3,9 +3,9 @@ import { Loader2Icon } from "lucide-react"
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+import { appPaths } from "@/app/router/paths"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { appConfig } from "@/config"
 import { ApiError } from "@/services/http.service"
 import { createWorkspace } from "@/services/workspace.service"
 import { useAuthStore } from "@/stores/auth.store"
@@ -50,7 +50,7 @@ export function CreateWorkspacePage() {
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
       await queryClient.invalidateQueries({ queryKey: ["workspace", workspace.id, "projects"] })
 
-      navigate(appConfig.auth.redirectAfterLogin, { replace: true })
+      navigate(appPaths.workspaceProjects(workspace.id), { replace: true })
     },
     onError: (error) => {
       setFormError(resolveErrorMessage(error, "Unable to create workspace. Please try again."))

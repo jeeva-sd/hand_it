@@ -2,7 +2,7 @@ import { Navigate, createBrowserRouter } from "react-router-dom"
 
 import { AppShellLayout } from "@/app/layouts/app-shell"
 import { AuthRouteGate } from "@/app/router/auth-route-gate"
-import { LegacyWorkspaceRedirect } from "@/app/router/legacy-workspace-redirect"
+import { WorkspaceEntryRedirect } from "@/app/router/workspace-entry-redirect"
 import { WorkspaceRouteGate } from "@/app/router/workspace-route-gate"
 import { AuthLayout } from "@/pages/auth/auth-layout"
 import { ForgetPasswordPage } from "@/pages/auth/forget-password-page"
@@ -118,7 +118,7 @@ export const appRouter = createBrowserRouter([
     path: "/",
     element: (
       <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="projects" />
+        <WorkspaceEntryRedirect />
       </AuthRouteGate>
     ),
   },
@@ -126,52 +126,16 @@ export const appRouter = createBrowserRouter([
     path: "/w",
     element: (
       <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="projects" />
-      </AuthRouteGate>
-    ),
-  },
-  {
-    path: "/projects",
-    element: (
-      <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="projects" />
-      </AuthRouteGate>
-    ),
-  },
-  {
-    path: "/projects/:projectId",
-    element: (
-      <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="project" />
-      </AuthRouteGate>
-    ),
-  },
-  {
-    path: "/settings",
-    element: (
-      <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="settings" />
-      </AuthRouteGate>
-    ),
-  },
-  {
-    path: "/settings/members",
-    element: (
-      <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="members" />
-      </AuthRouteGate>
-    ),
-  },
-  {
-    path: "/settings/billing",
-    element: (
-      <AuthRouteGate mode="private">
-        <LegacyWorkspaceRedirect target="billing" />
+        <WorkspaceEntryRedirect />
       </AuthRouteGate>
     ),
   },
   {
     path: "*",
-    element: <Navigate to="/auth/login" replace />,
+    element: (
+      <AuthRouteGate mode="private">
+        <WorkspaceEntryRedirect />
+      </AuthRouteGate>
+    ),
   },
 ])

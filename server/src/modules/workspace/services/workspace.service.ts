@@ -8,13 +8,13 @@ import {
 import { ProjectStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
 import { CacheService, PrismaService } from '~/integrations';
 import { TokenData } from '~/shared/types/request.type';
-import { CreateWorkspacePayload, UpdateWorkspacePayload, WorkspacePathPayload } from '../schemas';
 import {
     ProjectRecord,
     WorkspaceMemberRecord,
     WorkspaceRepository,
     WorkspaceWithMemberCount
 } from '../repositories/workspace.repository';
+import { CreateWorkspacePayload, UpdateWorkspacePayload, WorkspacePathPayload } from '../schemas';
 
 const FREE_WORKSPACE_STORAGE_LIMIT_BYTES = BigInt(2 * 1024 * 1024 * 1024);
 const WORKSPACE_LIST_CACHE_TTL_SECONDS = 60;
@@ -57,12 +57,7 @@ type WorkspaceMemberResponse = {
     role: WorkspaceRole;
     joinedAt: Date;
     updatedAt: Date;
-    user: {
-        id: string;
-        fname: string;
-        lname: string;
-        email: string;
-    };
+    user: { id: string; fname: string; lname: string; email: string };
 };
 
 @Injectable()
@@ -314,12 +309,7 @@ export class WorkspaceService {
             role: member.role,
             joinedAt: member.createdAt,
             updatedAt: member.updatedAt,
-            user: {
-                id: member.user.id,
-                fname: member.user.fname,
-                lname: member.user.lname,
-                email: member.user.email
-            }
+            user: { id: member.user.id, fname: member.user.fname, lname: member.user.lname, email: member.user.email }
         };
     }
 

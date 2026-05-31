@@ -93,13 +93,8 @@ export function AppSidebar({
 
   const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "--"
   const isWorkspaceSettingsActive = /^\/w\/[^/]+\/settings(\/|$)/.test(location.pathname)
-  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = React.useState(isWorkspaceSettingsActive)
-
-  React.useEffect(() => {
-    if (isWorkspaceSettingsActive) {
-      setIsWorkspaceSettingsOpen(true)
-    }
-  }, [isWorkspaceSettingsActive])
+  const [workspaceSettingsOpenByUser, setWorkspaceSettingsOpenByUser] = React.useState(false)
+  const isWorkspaceSettingsOpen = isWorkspaceSettingsActive || workspaceSettingsOpenByUser
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -220,7 +215,7 @@ export function AppSidebar({
         <SidebarSeparator />
 
         <SidebarGroup>
-          <Collapsible open={isWorkspaceSettingsOpen} onOpenChange={setIsWorkspaceSettingsOpen}>
+          <Collapsible open={isWorkspaceSettingsOpen} onOpenChange={setWorkspaceSettingsOpenByUser}>
             <SidebarGroupLabel asChild>
               <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 hover:bg-sidebar-accent/50">
                 <span>Workspace</span>

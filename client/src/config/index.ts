@@ -67,7 +67,6 @@ const configSchema = yup
     auth: yup
       .object({
         meQueryStaleTimeMs: yup.number().integer().min(0).required().defined(),
-        redirectAfterLogin: yup.string().required().defined(),
         googleSignInUrl: yup
           .string()
           .trim()

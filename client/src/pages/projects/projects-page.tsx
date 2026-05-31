@@ -351,7 +351,7 @@ function FilesTab({ sections }: { sections: ProjectFileSection[] }) {
   )
 }
 
-function SharesTab({ projectId: _projectId }: { projectId: string }) {
+function SharesTab() {
   const shares: ProjectShare[] = []
 
   return (
@@ -430,7 +430,7 @@ function SharesTab({ projectId: _projectId }: { projectId: string }) {
   )
 }
 
-function ActivityTab({ projectId: _projectId }: { projectId: string }) {
+function ActivityTab() {
   const activity: ProjectActivity[] = []
 
   return (
@@ -509,8 +509,8 @@ function ProjectWorkspace({
       </nav>
 
       {activeTab === "files" && <FilesTab sections={sections} />}
-      {activeTab === "shares" && <SharesTab projectId={project.id} />}
-      {activeTab === "activity" && <ActivityTab projectId={project.id} />}
+      {activeTab === "shares" && <SharesTab />}
+      {activeTab === "activity" && <ActivityTab />}
     </section>
   )
 }

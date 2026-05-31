@@ -1,9 +1,9 @@
-import { Loader2Icon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect } from "react"
 import { Navigate, useLocation, useParams } from "react-router-dom"
 
 import { appPaths, replaceWorkspaceInPath } from "@/app/router/paths"
+import { RouteLoadingScreen } from "@/app/router/route-loading-screen"
 import { useResolvedWorkspaceId } from "@/app/router/use-resolved-workspace-id"
 import { useWorkspaceStore } from "@/stores/workspace.store"
 
@@ -31,18 +31,7 @@ export function WorkspaceRouteGate({ children }: WorkspaceRouteGateProps) {
   }, [activeWorkspaceId, hasRouteWorkspace, setActiveWorkspace, workspaceId])
 
   if (isHydrating) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          <Loader2Icon className="size-4 animate-spin" />
-          Loading workspace...
-        </div>
-      </div>
-    )
-  }
-
-  if (workspaces.length === 0 && resolvedWorkspaceId.length === 0) {
-    return <Navigate to={appPaths.createWorkspace} replace />
+    return <RouteLoadingScreen message="Loading workspace..." />
   }
 
   if (!hasRouteWorkspace) {

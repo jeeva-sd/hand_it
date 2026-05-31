@@ -10,7 +10,6 @@ export type AppConfig = {
   }
   auth: {
     meQueryStaleTimeMs: number
-    redirectAfterLogin: string
     googleSignInUrl: string
   }
 }
@@ -33,7 +32,6 @@ export const baseConfig: AppConfig = {
   },
   auth: {
     meQueryStaleTimeMs: 60_000,
-    redirectAfterLogin: "/projects",
     googleSignInUrl: "http://localhost:5100/api/v1/auth/google",
   },
 }
