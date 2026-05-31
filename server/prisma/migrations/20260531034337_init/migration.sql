@@ -5,7 +5,7 @@ CREATE TABLE `users` (
     `lname` VARCHAR(50) NOT NULL,
     `email` VARCHAR(255) NOT NULL,
     `passwordHash` VARCHAR(255) NULL,
-    `status` INTEGER NULL,
+    `status` ENUM('PENDING', 'ACTIVE', 'DELETED') NULL DEFAULT 'PENDING',
     `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `updatedAt` DATETIME(3) NOT NULL,
 

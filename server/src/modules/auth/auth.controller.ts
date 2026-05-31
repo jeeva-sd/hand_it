@@ -5,7 +5,6 @@ import { RequestX } from '~/shared/types/request.type';
 import { Sanitize } from '~/system';
 import { AuthService } from './auth.service';
 import { SkipJwtAuth } from './decorators';
-import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 import {
     ForgetPasswordPayload,
     forgetPasswordSchema,
@@ -18,6 +17,7 @@ import {
     SignupPayload,
     signupSchema
 } from './schemas';
+import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {

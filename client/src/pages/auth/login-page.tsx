@@ -1,37 +1,37 @@
-import { useMutation } from "@tanstack/react-query"
-import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react"
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useMutation } from "@tanstack/react-query";
+import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 
-import { appConfig } from "@/config"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { getGoogleSignInUrl, loginWithPassword } from "@/services/auth.service"
-import { ApiError } from "@/services/http.service"
-import { useAuthStore } from "@/stores/auth.store"
+import { appConfig } from "@/config";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { getGoogleSignInUrl, loginWithPassword } from "@/services/auth.service";
+import { ApiError } from "@/services/http.service";
+import { useAuthStore } from "@/stores/auth.store";
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
-    return error.message
+    return error.message;
   }
 
   if (error instanceof Error && error.message) {
-    return error.message
+    return error.message;
   }
 
-  return fallback
+  return fallback;
 }
 
-const MIN_PASSWORD_LENGTH = 8
+const MIN_PASSWORD_LENGTH = 8;
 
 export function LoginPage() {
-  const navigate = useNavigate()
-  const setAuthenticatedSession = useAuthStore((state) => state.setAuthenticatedSession)
+  const navigate = useNavigate();
+  const setAuthenticatedSession = useAuthStore((state) => state.setAuthenticatedSession);
 
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loginMutation = useMutation({
     mutationFn: loginWithPassword,
@@ -39,33 +39,33 @@ export function LoginPage() {
       setAuthenticatedSession({
         user: result.user,
         lastUsedWorkspace: null,
-      })
+      });
 
-      navigate(appConfig.auth.redirectAfterLogin, { replace: true })
+      navigate(appConfig.auth.redirectAfterLogin, { replace: true });
     },
     onError: (error) => {
-      setFormError(resolveErrorMessage(error, "Unable to sign in. Please try again."))
+      setFormError(resolveErrorMessage(error, "Unable to sign in. Please try again."));
     },
-  })
+  });
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setFormError(null)
+    event.preventDefault();
+    setFormError(null);
 
     if (password.length < MIN_PASSWORD_LENGTH) {
-      setFormError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`)
-      return
+      setFormError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`);
+      return;
     }
 
     loginMutation.mutate({
       email: email.trim(),
       password,
-    })
-  }
+    });
+  };
 
   const handleGoogleSignIn = () => {
-    window.location.assign(getGoogleSignInUrl())
-  }
+    window.location.assign(getGoogleSignInUrl());
+  };
 
   return (
     <div className="space-y-5">
@@ -84,7 +84,7 @@ export function LoginPage() {
             <span className="w-full border-t border-border" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-white px-2 text-muted-foreground">or</span>
+            <span className="bg-background px-2 text-muted-foreground">or</span>
           </div>
         </div>
 
@@ -135,7 +135,9 @@ export function LoginPage() {
         </div>
 
         {formError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{formError}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {formError}
+          </div>
         )}
 
         <Button type="submit" className="h-10 w-full" disabled={loginMutation.isPending}>
@@ -150,10 +152,7 @@ export function LoginPage() {
         </Button>
       </form>
 
-      <div className="flex items-center justify-between text-sm">
-        <Link to="/auth/forget-password" className="font-medium text-primary hover:underline">
-          Forgot password?
-        </Link>
+      <div className="text-center text-sm">
         <p className="text-muted-foreground">
           New here?{" "}
           <Link to="/auth/signup" className="font-medium text-primary hover:underline">
@@ -162,5 +161,5 @@ export function LoginPage() {
         </p>
       </div>
     </div>
-  )
+  );
 }

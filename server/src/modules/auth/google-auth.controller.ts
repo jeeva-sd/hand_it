@@ -1,7 +1,7 @@
 import { Controller, Get, Query, Res } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
-import { SkipJwtAuth } from './decorators';
 import { AuthService } from './auth.service';
+import { SkipJwtAuth } from './decorators';
 
 @Controller('auth')
 export class GoogleAuthController {
@@ -20,7 +20,7 @@ export class GoogleAuthController {
         @Query('error') error: string | undefined,
         @Res() response: FastifyReply
     ) {
-        if (error || !(code?.trim())) {
+        if (error || !code?.trim()) {
             this.authService.clearAuthCookie(response);
             return response.redirect(this.authService.getGoogleFailureRedirectUrl(), 302);
         }

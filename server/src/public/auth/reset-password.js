@@ -10,13 +10,25 @@
     const successBox = document.getElementById('success-box');
     const passwordInput = document.getElementById('password');
     const confirmPasswordInput = document.getElementById('confirmPassword');
+    const lengthRule = document.getElementById('rule-length');
+    const uppercaseRule = document.getElementById('rule-uppercase');
+    const lowercaseRule = document.getElementById('rule-lowercase');
+    const numberRule = document.getElementById('rule-number');
+    const matchRule = document.getElementById('rule-match');
 
     if (
-        !(submitButton instanceof HTMLButtonElement) ||
-        !(errorBox instanceof HTMLElement) ||
-        !(successBox instanceof HTMLElement) ||
-        !(passwordInput instanceof HTMLInputElement) ||
-        !(confirmPasswordInput instanceof HTMLInputElement)
+        !(
+            submitButton instanceof HTMLButtonElement &&
+            errorBox instanceof HTMLElement &&
+            successBox instanceof HTMLElement &&
+            passwordInput instanceof HTMLInputElement &&
+            confirmPasswordInput instanceof HTMLInputElement &&
+            lengthRule instanceof HTMLElement &&
+            uppercaseRule instanceof HTMLElement &&
+            lowercaseRule instanceof HTMLElement &&
+            numberRule instanceof HTMLElement &&
+            matchRule instanceof HTMLElement
+        )
     ) {
         return;
     }
@@ -24,6 +36,7 @@
     const submitEndpoint = (form.dataset.submitEndpoint || '').trim();
     const tokenFromData = (form.dataset.token || '').trim();
     const tokenFromQuery = (new URLSearchParams(window.location.search).get('token') || '').trim();
+    const successRedirectUrl = (form.dataset.successRedirectUrl || '').trim();
     const token = tokenFromData || tokenFromQuery;
 
     const passwordRule = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,128}$/;
@@ -46,15 +59,49 @@
         successBox.style.display = 'none';
     };
 
+    const setRuleState = (ruleElement, isComplete) => {
+        if (isComplete) {
+            ruleElement.classList.add('completed');
+            return;
+        }
+
+        ruleElement.classList.remove('completed');
+    };
+
+    const updateValidationUi = () => {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        const hasLength = password.length >= 8;
+        const hasUppercase = /[A-Z]/.test(password);
+        const hasLowercase = /[a-z]/.test(password);
+        const hasNumber = /\d/.test(password);
+        const hasMatch = password.length > 0 && confirmPassword.length > 0 && password === confirmPassword;
+
+        setRuleState(lengthRule, hasLength);
+        setRuleState(uppercaseRule, hasUppercase);
+        setRuleState(lowercaseRule, hasLowercase);
+        setRuleState(numberRule, hasNumber);
+        setRuleState(matchRule, hasMatch);
+
+        return hasLength && hasUppercase && hasLowercase && hasNumber && hasMatch;
+    };
+
+    const updateSubmitState = () => {
+        const hasValidRequestData = Boolean(submitEndpoint && token);
+        const allRulesMet = updateValidationUi();
+        submitButton.disabled = !(hasValidRequestData && allRulesMet);
+        return allRulesMet;
+    };
+
     const setConfirmPasswordValidity = () => {
-        const hasMismatch =
-            confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value;
+        const hasMismatch = confirmPasswordInput.value.length > 0 && passwordInput.value !== confirmPasswordInput.value;
 
         confirmPasswordInput.setCustomValidity(hasMismatch ? 'Confirm password must match password.' : '');
     };
 
     const validateForm = (password, confirmPassword) => {
-        if (!password || !confirmPassword) {
+        if (!(password && confirmPassword)) {
             return 'Password and confirm password are required.';
         }
 
@@ -69,21 +116,20 @@
         return null;
     };
 
-    if (!submitEndpoint || !token) {
+    if (!(submitEndpoint && token)) {
         submitButton.disabled = true;
         setError('Reset link is invalid. Please request a new password link and try again.');
         return;
     }
 
-    passwordInput.addEventListener('input', () => {
+    const handleInput = () => {
         setConfirmPasswordValidity();
         clearMessages();
-    });
+        updateSubmitState();
+    };
 
-    confirmPasswordInput.addEventListener('input', () => {
-        setConfirmPasswordValidity();
-        clearMessages();
-    });
+    passwordInput.addEventListener('input', handleInput);
+    confirmPasswordInput.addEventListener('input', handleInput);
 
     form.addEventListener('submit', async event => {
         event.preventDefault();
@@ -121,14 +167,28 @@
                 return;
             }
 
+            const redirectUrlFromResponse =
+                body && typeof body === 'object' && typeof body.redirectUrl === 'string' && body.redirectUrl.trim()
+                    ? body.redirectUrl.trim()
+                    : '';
+            const redirectUrl = redirectUrlFromResponse || successRedirectUrl || '/';
+
             setSuccess('Password updated successfully. You can now continue to the app.');
             form.reset();
             setConfirmPasswordValidity();
+            updateSubmitState();
+
+            window.setTimeout(() => {
+                window.location.href = redirectUrl;
+            }, 1200);
         } catch {
             setError(genericErrorMessage);
         } finally {
-            submitButton.disabled = false;
+            updateSubmitState();
             submitButton.textContent = 'Save Password';
         }
     });
+
+    setConfirmPasswordValidity();
+    updateSubmitState();
 })();

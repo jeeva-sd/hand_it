@@ -2,8 +2,8 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { Injectable, Logger } from '@nestjs/common';
 import * as Handlebars from 'handlebars';
-import * as nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
+import * as nodemailer from 'nodemailer';
 import { StringUtils } from '~/shared/utils/string.utils';
 import { appConfig } from '~/system/config';
 import { EMAIL_TEMPLATE_MAP, EmailType } from './email.constants';
@@ -19,10 +19,7 @@ export class EmailsService {
                 host: appConfig.email.host,
                 port: appConfig.email.port,
                 secure: appConfig.email.secure,
-                auth: {
-                    user: appConfig.email.auth.user,
-                    pass: appConfig.email.auth.pass
-                }
+                auth: { user: appConfig.email.auth.user, pass: appConfig.email.auth.pass }
             });
 
             // Verify SMTP connectivity once on startup to surface invalid credentials early.
@@ -79,7 +76,7 @@ export class EmailsService {
      * Loads template, generates HTML, sends email
      */
     async sendTemplate(to: string, subject: string, emailType: EmailType, context: unknown): Promise<boolean> {
-        if (!appConfig.email?.enabled || !appConfig.email) {
+        if (!(appConfig.email?.enabled && appConfig.email)) {
             this.logger.warn(`Email service disabled. Skipping ${emailType} to ${to}`);
             return false;
         }

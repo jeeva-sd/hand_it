@@ -9,7 +9,7 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthTokenType, User } from '@prisma/client';
+import { AuthTokenType, User, UserStatus } from '@prisma/client';
 import { FastifyReply } from 'fastify';
 import { EmailsService, PrismaService } from '~/integrations';
 import { EMAIL_TYPES, EmailType } from '~/integrations/email/email.constants';
@@ -33,29 +33,24 @@ type AuthUserResponse = {
     fname: string;
     lname: string;
     email: string;
-    status: number | null;
+    status: string | null;
     createdAt: Date;
     updatedAt: Date;
 };
 
-type LastUsedWorkspaceResponse = {
-    id: string;
-    roleId: string | null;
-    accessId: string | null;
-};
+type LastUsedWorkspaceResponse = { id: string; roleId: string | null; accessId: string | null };
 
 type AuthPageModel = {
     valid: boolean;
     title: string;
     subtitle: string;
     submitEndpoint: string;
+    successRedirectUrl?: string;
     token?: string;
     invalidReason?: string;
 };
 
-type GoogleTokenResponse = {
-    access_token?: string;
-};
+type GoogleTokenResponse = { access_token?: string };
 
 type GoogleProfileResponse = {
     email?: string;
@@ -127,7 +122,7 @@ export class AuthService {
                 fname: names.fname,
                 lname: names.lname,
                 email,
-                status: 1
+                status: UserStatus.ACTIVE
             });
         } else {
             const fname = user.fname?.trim() || names.fname;
@@ -137,8 +132,8 @@ export class AuthService {
                 user = await this.authRepository.updateUserProfile({ id: user.id, fname, lname });
             }
 
-            if (user.status !== 1) {
-                user = await this.authRepository.updateUserStatus({ id: user.id, status: 1 });
+            if (user.status !== UserStatus.ACTIVE) {
+                user = await this.authRepository.updateUserStatus({ id: user.id, status: UserStatus.ACTIVE });
             }
         }
 
@@ -148,7 +143,7 @@ export class AuthService {
     }
 
     async getMe(tokenData?: TokenData) {
-        if (!(tokenData?.sub && tokenData.sub.trim())) {
+        if (!tokenData?.sub?.trim()) {
             throw new UnauthorizedException('Unauthorized');
         }
 
@@ -157,28 +152,22 @@ export class AuthService {
             throw new UnauthorizedException('Unauthorized');
         }
 
-        return {
-            user: this.mapUser(user),
-            lastUsedWorkspace: this.mapLastUsedWorkspace(tokenData)
-        };
+        return { user: this.mapUser(user), lastUsedWorkspace: this.mapLastUsedWorkspace(tokenData) };
     }
 
     async signup(payload: SignupPayload) {
-        const email = payload.email.toLowerCase().trim();
+        const existingUser = await this.authRepository.findUserByEmail({ email: payload.email });
 
-        const existingUser = await this.authRepository.findUserByEmail({ email });
-
-        if (existingUser?.passwordHash) {
+        if (existingUser) {
             throw new ConflictException('An account already exists with this email address');
         }
 
-        const user = existingUser
-            ? await this.authRepository.updateUserProfile({
-                  id: existingUser.id,
-                  fname: payload.fname,
-                  lname: payload.lname
-              })
-            : await this.authRepository.createUser({ fname: payload.fname, lname: payload.lname, email, status: 0 });
+        const user = await this.authRepository.createUser({
+            fname: payload.fname,
+            lname: payload.lname,
+            email: payload.email,
+            status: UserStatus.PENDING
+        });
 
         const rawToken = await this.createAuthToken(user.id, AuthTokenType.ACCOUNT_SETUP, ACCOUNT_SETUP_TTL_MS);
         const resetLink = this.buildResetLink(rawToken);
@@ -272,6 +261,7 @@ export class AuthService {
                 ? 'Set a strong password to activate your account.'
                 : 'Enter a new password for your account.',
             submitEndpoint: this.buildVersionedApiPath('auth/reset-password'),
+            successRedirectUrl: this.buildClientRedirectUrl('/'),
             token: normalizedToken
         };
     }
@@ -294,7 +284,10 @@ export class AuthService {
                 throw new BadRequestException('Password link is invalid or expired');
             }
 
-            await this.authRepository.updateUserPassword({ id: authToken.userId, passwordHash, status: 1 }, tx);
+            await this.authRepository.updateUserPassword(
+                { id: authToken.userId, passwordHash, status: UserStatus.ACTIVE },
+                tx
+            );
 
             await this.authRepository.markAllUserAuthTokensUsed({ userId: authToken.userId, usedAt: now }, tx);
 
@@ -307,8 +300,9 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
+        const redirectUrl = this.buildClientRedirectUrl('/');
 
-        return { message: 'Password updated successfully', token, user: this.mapUser(user) };
+        return { message: 'Password updated successfully', token, user: this.mapUser(user), redirectUrl };
     }
 
     attachAuthCookie(reply: FastifyReply, token: string): void {
@@ -327,11 +321,7 @@ export class AuthService {
     clearAuthCookie(reply: FastifyReply): void {
         const cookieName = this.getAuthCookieName();
 
-        reply.clearCookie(cookieName, {
-            sameSite: 'lax',
-            secure: appConfig.server.mode === 'production',
-            path: '/'
-        });
+        reply.clearCookie(cookieName, { sameSite: 'lax', secure: appConfig.server.mode === 'production', path: '/' });
     }
 
     private mapUser(user: User): AuthUserResponse {
@@ -355,11 +345,7 @@ export class AuthService {
         const roleId = tokenData.roleId?.trim() || null;
         const accessId = tokenData.accessId?.trim() || null;
 
-        return {
-            id: workspaceId,
-            roleId,
-            accessId
-        };
+        return { id: workspaceId, roleId, accessId };
     }
 
     private buildTokenData(userId: string): TokenData {
@@ -414,18 +400,13 @@ export class AuthService {
             return { fname: first, lname: last };
         }
 
-        return {
-            fname: givenName || 'Google',
-            lname: familyName || 'User'
-        };
+        return { fname: givenName || 'Google', lname: familyName || 'User' };
     }
 
     private async exchangeGoogleCodeForAccessToken(code: string): Promise<string> {
         const response = await fetch(appConfig.auth.google.tokenUrl, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
                 code,
                 client_id: appConfig.auth.google.clientId,
@@ -447,9 +428,7 @@ export class AuthService {
     private async fetchGoogleProfile(accessToken: string): Promise<GoogleProfileResponse> {
         const response = await fetch(appConfig.auth.google.userInfoUrl, {
             method: 'GET',
-            headers: {
-                Authorization: `Bearer ${accessToken}`
-            }
+            headers: { Authorization: `Bearer ${accessToken}` }
         });
 
         const payload = (await response.json().catch(() => null)) as GoogleProfileResponse | null;
