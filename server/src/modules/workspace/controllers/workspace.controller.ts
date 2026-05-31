@@ -8,9 +8,7 @@ import {
     UpdateWorkspacePayload,
     updateWorkspaceSchema,
     WorkspacePathPayload,
-    WorkspaceProjectPathPayload,
-    workspacePathSchema,
-    workspaceProjectPathSchema
+    workspacePathSchema
 } from '../schemas';
 import { WorkspaceService } from '../services/workspace.service';
 
@@ -37,20 +35,6 @@ export class WorkspaceController {
     @Sanitize(workspacePathSchema)
     async getWorkspace(@Req() request: RequestX<WorkspacePathPayload>) {
         return this.workspaceService.getWorkspace(request.payload, request.user);
-    }
-
-    @Get(':workspaceId/projects')
-    @HttpCode(200)
-    @Sanitize(workspacePathSchema)
-    async listProjects(@Req() request: RequestX<WorkspacePathPayload>) {
-        return this.workspaceService.listProjects(request.payload, request.user);
-    }
-
-    @Get(':workspaceId/projects/:projectId')
-    @HttpCode(200)
-    @Sanitize(workspaceProjectPathSchema)
-    async getProject(@Req() request: RequestX<WorkspaceProjectPathPayload>) {
-        return this.workspaceService.getProject(request.payload, request.user);
     }
 
     @Get(':workspaceId/members')

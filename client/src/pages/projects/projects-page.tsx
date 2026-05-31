@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { appPaths } from "@/app/router/paths"
@@ -20,6 +21,7 @@ import { useProjectsQuery } from "@/features/project/use-projects-query"
 import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { cn } from "@/lib/utils"
 import { ApiError } from "@/services/http.service"
+import { createProject, updateProject, deleteProject, favoriteProject, unfavoriteProject } from "@/services/project.service"
 import type {
   ActivityType,
   Project,
@@ -28,6 +30,7 @@ import type {
   ProjectShare,
   WorkspaceFile,
 } from "@/types/workspace"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   ArrowUpDownIcon,
   CalendarIcon,
@@ -41,12 +44,14 @@ import {
   ImageIcon,
   Link2Icon,
   ListIcon,
+  Loader2Icon,
   MoreHorizontalIcon,
   PenToolIcon,
   PencilIcon,
   RefreshCcwIcon,
   RotateCcwIcon,
   SearchIcon,
+  StarIcon,
   Trash2Icon,
   UploadIcon,
   VideoIcon,
@@ -460,21 +465,60 @@ function ProjectWorkspace({
   project,
   activeTab,
   onTabChange,
+  onOpenEditSheet,
+  onDeleteProject,
+  isMutating,
+  onToggleFavorite,
 }: {
   project: Project
   activeTab: ProjectTab
   onTabChange: (tab: ProjectTab) => void
+  onOpenEditSheet: () => void
+  onDeleteProject: () => void
+  isMutating: boolean
+  onToggleFavorite: () => void
 }) {
-
   const sections: ProjectFileSection[] = []
 
   return (
     <section className="space-y-5">
       <header className="rounded-2xl border border-border bg-card p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold">{project.name}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">{project.description}</p>
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-semibold">{project.name}</h2>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onToggleFavorite}
+                aria-label={project.isFavorite ? "Unfavorite Project" : "Favorite Project"}
+                className={cn(
+                  project.isFavorite
+                    ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+              >
+                <StarIcon className={cn("size-4", project.isFavorite && "fill-current")} />
+              </Button>
+              <Button variant="ghost" size="icon-sm" onClick={onOpenEditSheet} aria-label="Edit Project">
+                <PencilIcon className="size-4 text-muted-foreground hover:text-foreground" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="text-destructive hover:bg-destructive/10"
+                onClick={onDeleteProject}
+                disabled={isMutating}
+                aria-label="Delete Project"
+              >
+                {isMutating ? (
+                  <Loader2Icon className="size-4 animate-spin" />
+                ) : (
+                  <Trash2Icon className="size-4" />
+                )}
+              </Button>
+            </div>
+            <p className="max-w-2xl text-sm text-muted-foreground">{project.description}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <Badge variant={project.status === "Archived" ? "outline" : "default"}>{project.status}</Badge>
               <span className="flex items-center gap-1">
@@ -517,40 +561,61 @@ function ProjectWorkspace({
   )
 }
 
-function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; workspaceId: string }) {
-  const [query, setQuery] = useState("")
-  const [filter, setFilter] = useState<DirectoryFilter>("active")
+interface ProjectsDirectoryProps {
+  projects: Project[]
+  workspaceId: string
+  query: string
+  setQuery: (q: string) => void
+  filter: DirectoryFilter
+  setFilter: (f: DirectoryFilter) => void
+  page: number
+  setPage: (p: number) => void
+  totalPages: number
+  totalItems: number
+  onOpenCreateSheet: () => void
+  onToggleFavorite: (id: string, isFavorite: boolean) => void
+}
+
+function ProjectsDirectory({
+  projects,
+  workspaceId,
+  query,
+  setQuery,
+  filter,
+  setFilter,
+  page,
+  setPage,
+  totalPages,
+  totalItems,
+  onOpenCreateSheet,
+  onToggleFavorite,
+}: ProjectsDirectoryProps) {
   const [view, setView] = useState<DirectoryView>("grid")
 
-  const filteredProjects = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase()
-
+  // For locally hardcoded fields like favorites filters, we can refine search further
+  const processedProjects = useMemo(() => {
     return projects.filter((project) => {
-      if (filter === "archived" && project.status !== "Archived") {
-        return false
-      }
-
       if (filter === "favorites" && !project.isFavorite) {
-        return false
+        return false // If favoritism gets built later, it works
       }
-
-      if (filter === "active" && project.status === "Archived") {
-        return false
-      }
-
-      if (normalizedQuery.length === 0) {
-        return true
-      }
-
-      return project.name.toLowerCase().includes(normalizedQuery)
+      return true
     })
-  }, [filter, projects, query])
+  }, [projects, filter])
 
   return (
     <section className="space-y-5">
       <header className="rounded-2xl border border-border bg-card p-5">
-        <h2 className="text-2xl font-semibold">All Projects</h2>
-        <p className="mt-2 text-sm text-muted-foreground">Search across every project and jump straight into delivery work.</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
+          <div>
+            <h2 className="text-2xl font-semibold">All Projects</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Search across every project and jump straight into delivery work.
+            </p>
+          </div>
+          <Button onClick={onOpenCreateSheet} className="md:self-start">
+            Create Project
+          </Button>
+        </div>
 
         <div className="mt-4 flex flex-col gap-3 xl:flex-row xl:items-center">
           <div className="relative flex-1">
@@ -564,13 +629,31 @@ function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; wor
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button variant={filter === "active" ? "secondary" : "outline"} onClick={() => setFilter("active")}>
+            <Button
+              variant={filter === "active" ? "secondary" : "outline"}
+              onClick={() => {
+                setFilter("active")
+                setPage(1)
+              }}
+            >
               Active
             </Button>
-            <Button variant={filter === "archived" ? "secondary" : "outline"} onClick={() => setFilter("archived")}>
+            <Button
+              variant={filter === "archived" ? "secondary" : "outline"}
+              onClick={() => {
+                setFilter("archived")
+                setPage(1)
+              }}
+            >
               Archived
             </Button>
-            <Button variant={filter === "favorites" ? "secondary" : "outline"} onClick={() => setFilter("favorites")}>
+            <Button
+              variant={filter === "favorites" ? "secondary" : "outline"}
+              onClick={() => {
+                setFilter("favorites")
+                setPage(1)
+              }}
+            >
               Favorites
             </Button>
           </div>
@@ -586,26 +669,44 @@ function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; wor
         </div>
       </header>
 
-      {filteredProjects.length === 0 && (
+      {processedProjects.length === 0 && (
         <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
           No projects match your filters.
         </div>
       )}
 
-      {view === "grid" && (
+      {view === "grid" && processedProjects.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredProjects.map((project) => (
+          {processedProjects.map((project) => (
             <Link
               key={project.id}
               to={appPaths.workspaceProjectSection(workspaceId, project.id, "files")}
-              className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
+              className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40 relative group"
             >
               <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-base font-semibold">{project.name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{project.description}</p>
+                <div className="min-w-0">
+                  <p className="text-base font-semibold truncate">{project.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{project.description}</p>
                 </div>
-                {project.isFavorite && <Badge variant="outline">Favorite</Badge>}
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onToggleFavorite(project.id, project.isFavorite)
+                    }}
+                    className={cn(
+                      "rounded-lg",
+                      project.isFavorite
+                        ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    )}
+                  >
+                    <StarIcon className={cn("size-4", project.isFavorite && "fill-current")} />
+                  </Button>
+                </div>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
@@ -631,14 +732,33 @@ function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; wor
         </div>
       )}
 
-      {view === "list" && (
+      {view === "list" && processedProjects.length > 0 && (
         <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          {filteredProjects.map((project) => (
+          {processedProjects.map((project) => (
             <Link
               key={project.id}
               to={appPaths.workspaceProjectSection(workspaceId, project.id, "files")}
-              className="grid gap-2 border-b border-border/70 px-4 py-3 transition-colors hover:bg-muted/30 last:border-b-0 md:grid-cols-[minmax(0,1.6fr)_0.8fr_0.8fr_1fr_1fr] md:items-center"
+              className="grid gap-2 border-b border-border/70 px-4 py-3 transition-colors hover:bg-muted/30 last:border-b-0 md:grid-cols-[auto_minmax(0,1.6fr)_0.8fr_0.8fr_1fr_1fr] md:items-center"
             >
+              <div className="flex items-center shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onToggleFavorite(project.id, project.isFavorite)
+                  }}
+                  className={cn(
+                    "rounded-lg",
+                    project.isFavorite
+                      ? "text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-950/20"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                  )}
+                >
+                  <StarIcon className={cn("size-4", project.isFavorite && "fill-current")} />
+                </Button>
+              </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium">{project.name}</p>
                 <p className="truncate text-xs text-muted-foreground">{project.description}</p>
@@ -651,6 +771,37 @@ function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; wor
           ))}
         </div>
       )}
+
+      {/* Pagination Footer */}
+      {totalPages > 1 && (
+        <footer className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-border pt-4 pb-2">
+          <p className="text-xs text-muted-foreground">
+            Showing <span className="font-medium">{processedProjects.length}</span> of{" "}
+            <span className="font-medium">{totalItems}</span> projects.
+          </p>
+          <div className="flex items-center gap-3 self-center sm:self-auto">
+            <Button
+              variant="outline"
+              size="xs"
+              disabled={page === 1}
+              onClick={() => setPage(page - 1)}
+            >
+              Previous
+            </Button>
+            <span className="text-xs font-medium">
+              Page {page} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="xs"
+              disabled={page === totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </footer>
+      )}
     </section>
   )
 }
@@ -661,17 +812,72 @@ type ProjectsPageProps = {
 
 export function ProjectsPage({ projectTab }: ProjectsPageProps) {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { workspaceId = "", projectId = "" } = useParams()
 
   const hasProjectRoute = projectId.length > 0
   const workspaceQuery = useWorkspaceQuery(workspaceId)
 
-  const isWorkspaceReady = workspaceId.length > 0
-  const projectsQuery = useProjectsQuery(workspaceId, !hasProjectRoute && isWorkspaceReady)
-  const projectQuery = useProjectQuery(workspaceId, hasProjectRoute ? projectId : "", hasProjectRoute && isWorkspaceReady)
-  const isProjectNotFound =
-    hasProjectRoute && projectQuery.isError && projectQuery.error instanceof ApiError && projectQuery.error.status === 404
+  // PAGINATION, SEARCH, AND FILTER STATES
+  const [page, setPage] = useState(1)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [filter, setFilter] = useState<DirectoryFilter>("active")
+  const [sortOrder] = useState<"asc" | "desc">("desc")
 
+  // Sheet states
+  const [openCreateSheet, setOpenCreateSheet] = useState(false)
+  const [createSchemaError, setCreateSchemaError] = useState<string | null>(null)
+  const [newProjectName, setNewProjectName] = useState("")
+  const [newProjectDesc, setNewProjectDesc] = useState("")
+
+  const [openEditSheet, setOpenEditSheet] = useState(false)
+  const [editSchemaError, setEditSchemaError] = useState<string | null>(null)
+  const [editProjectName, setEditProjectName] = useState("")
+  const [editProjectDesc, setEditProjectDesc] = useState("")
+  const [editProjectStatus, setEditProjectStatus] = useState<string>("Active")
+
+  // Search Debouncer
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+      setPage(1) // reset on filter search
+    }, 450)
+    return () => clearTimeout(handler)
+  }, [searchTerm])
+
+  const isWorkspaceReady = workspaceId.length > 0
+
+  // 1. Paginated & Filtered listing query
+  const projectsQuery = useProjectsQuery(workspaceId, {
+    enabled: !hasProjectRoute && isWorkspaceReady,
+    page,
+    size: 6, // 6 items per page
+    searchTerm: debouncedSearch,
+    status: filter === "favorites" ? "all" : filter,
+    sortOrder,
+  })
+
+  // 2. Single Project detail query
+  const projectQuery = useProjectQuery(
+    workspaceId,
+    hasProjectRoute ? projectId : "",
+    hasProjectRoute && isWorkspaceReady
+  )
+
+  const isProjectNotFound =
+    hasProjectRoute &&
+    projectQuery.isError &&
+    projectQuery.error instanceof ApiError &&
+    projectQuery.error.status === 404
+
+  // Reset page when switching workspaces or filters
+  useEffect(() => {
+    setPage(1)
+    setSearchTerm("")
+  }, [workspaceId, filter])
+
+  // Redirect on project not found
   useEffect(() => {
     if (!hasProjectRoute || !isProjectNotFound || !workspaceId) {
       return
@@ -679,6 +885,90 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
 
     navigate(appPaths.workspaceProjects(workspaceId), { replace: true })
   }, [hasProjectRoute, isProjectNotFound, navigate, workspaceId])
+
+  // Mutation: CREATE Project
+  const createMutation = useMutation({
+    mutationFn: (payload: { name: string; description: string }) =>
+      createProject(workspaceId, {
+        name: payload.name,
+        description: payload.description,
+        status: "ACTIVE",
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "projects"] })
+      setOpenCreateSheet(false)
+      setNewProjectName("")
+      setNewProjectDesc("")
+      setCreateSchemaError(null)
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setCreateSchemaError(err.message)
+      } else {
+        setCreateSchemaError("Failed to create project. Please try again.")
+      }
+    },
+  })
+
+  // Mutation: UPDATE Project
+  const updateMutation = useMutation({
+    mutationFn: (payload: { name: string; description: string; status: string }) =>
+      updateProject(workspaceId, projectId, {
+        name: payload.name,
+        description: payload.description,
+        status: payload.status.toUpperCase(),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "projects"] })
+      setOpenEditSheet(false)
+      setEditSchemaError(null)
+    },
+    onError: (err) => {
+      if (err instanceof ApiError) {
+        setEditSchemaError(err.message)
+      } else {
+        setEditSchemaError("Failed to update project. Please try again.")
+      }
+    },
+  })
+
+  // Mutation: DELETE Project
+  const deleteMutation = useMutation({
+    mutationFn: () => deleteProject(workspaceId, projectId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "projects"] })
+      navigate(appPaths.workspaceProjects(workspaceId))
+    },
+    onError: () => {
+      alert("Failed to delete project. Please try again.")
+    },
+  })
+
+  // Mutation: TOGGLE FAVORITE
+  const favoriteMutation = useMutation({
+    mutationFn: ({ id, isFavorite }: { id: string; isFavorite: boolean }) => {
+      if (isFavorite) {
+        return unfavoriteProject(workspaceId, id)
+      } else {
+        return favoriteProject(workspaceId, id)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "projects"] })
+    },
+    onError: () => {
+      alert("Failed to update favorite status. Please try again.")
+    },
+  })
+
+  // Prefill edit form when sheet opens
+  useEffect(() => {
+    if (projectQuery.data && openEditSheet) {
+      setEditProjectName(projectQuery.data.name)
+      setEditProjectDesc(projectQuery.data.description ?? "")
+      setEditProjectStatus(projectQuery.data.status)
+    }
+  }, [projectQuery.data, openEditSheet])
 
   if (!workspaceId) {
     return (
@@ -704,6 +994,36 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
     )
   }
 
+  const handleCreateProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setCreateSchemaError(null)
+    if (!newProjectName.trim()) {
+      setCreateSchemaError("Project name is required")
+      return
+    }
+    createMutation.mutate({ name: newProjectName.trim(), description: newProjectDesc.trim() })
+  }
+
+  const handleEditProjectSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setEditSchemaError(null)
+    if (!editProjectName.trim()) {
+      setEditSchemaError("Project name is required")
+      return
+    }
+    updateMutation.mutate({
+      name: editProjectName.trim(),
+      description: editProjectDesc.trim(),
+      status: editProjectStatus,
+    })
+  }
+
+  const handleDeleteProject = () => {
+    if (confirm("Are you sure you want to permanently delete this project? All associated file registries and history will be lost.")) {
+      deleteMutation.mutate()
+    }
+  }
+
   if (!hasProjectRoute) {
     if (projectsQuery.isLoading) {
       return (
@@ -721,7 +1041,76 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
       )
     }
 
-    return <ProjectsDirectory projects={projectsQuery.data ?? []} workspaceId={workspaceId} />
+    const { projects = [], meta } = projectsQuery.data ?? {}
+
+    return (
+      <>
+        <ProjectsDirectory
+          projects={projects}
+          workspaceId={workspaceId}
+          query={searchTerm}
+          setQuery={setSearchTerm}
+          filter={filter}
+          setFilter={setFilter}
+          page={page}
+          setPage={setPage}
+          totalPages={meta?.totalPages ?? 1}
+          totalItems={meta?.totalItems ?? 0}
+          onOpenCreateSheet={() => setOpenCreateSheet(true)}
+          onToggleFavorite={(id, isFavorite) => favoriteMutation.mutate({ id, isFavorite })}
+        />
+
+        {/* Create Project Sheet */}
+        <Sheet open={openCreateSheet} onOpenChange={setOpenCreateSheet}>
+          <SheetContent side="right" className="w-full max-w-xl p-6">
+            <SheetHeader className="pb-5 border-b border-border/80">
+              <SheetTitle>Create New Project</SheetTitle>
+              <SheetDescription>Set up a clean space for uploading and delivering directories.</SheetDescription>
+            </SheetHeader>
+            <form onSubmit={handleCreateProjectSubmit} className="mt-6 space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="pname" className="text-sm font-medium">Project Name</label>
+                <Input
+                  id="pname"
+                  placeholder="e.g. Q2 Marketing Assets"
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  maxLength={120}
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="pdesc" className="text-sm font-medium">Description</label>
+                <textarea
+                  id="pdesc"
+                  rows={4}
+                  placeholder="Tell your team what this directory is for."
+                  className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  value={newProjectDesc}
+                  onChange={(e) => setNewProjectDesc(e.target.value)}
+                  maxLength={500}
+                />
+              </div>
+
+              {createSchemaError && (
+                <p className="text-xs text-red-500 rounded-lg bg-red-50 border border-red-100 p-2.5">
+                  {createSchemaError}
+                </p>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button type="button" variant="outline" onClick={() => setOpenCreateSheet(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Creating..." : "Create Project"}
+                </Button>
+              </div>
+            </form>
+          </SheetContent>
+        </Sheet>
+      </>
+    )
   }
 
   if (projectQuery.isLoading) {
@@ -771,5 +1160,83 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
     navigate(appPaths.workspaceProjectSection(workspaceId, selectedProject.id, tab))
   }
 
-  return <ProjectWorkspace project={selectedProject} activeTab={activeTab} onTabChange={handleTabChange} />
+  return (
+    <>
+      <ProjectWorkspace
+        project={selectedProject}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onOpenEditSheet={() => setOpenEditSheet(true)}
+        onDeleteProject={handleDeleteProject}
+        isMutating={deleteMutation.isPending}
+        onToggleFavorite={() =>
+          favoriteMutation.mutate({ id: selectedProject.id, isFavorite: selectedProject.isFavorite })
+        }
+      />
+
+      {/* Edit Project Sheet */}
+      <Sheet open={openEditSheet} onOpenChange={setOpenEditSheet}>
+        <SheetContent side="right" className="w-full max-w-xl p-6">
+          <SheetHeader className="pb-5 border-b border-border/80">
+            <SheetTitle>Edit Project</SheetTitle>
+            <SheetDescription>Configure status, descriptions, and name of your project workspace.</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleEditProjectSubmit} className="mt-6 space-y-4">
+            <div className="space-y-1.5">
+              <label htmlFor="peditname" className="text-sm font-medium">Project Name</label>
+              <Input
+                id="peditname"
+                placeholder="Project Name"
+                value={editProjectName}
+                onChange={(e) => setEditProjectName(e.target.value)}
+                maxLength={120}
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="peditdesc" className="text-sm font-medium">Description</label>
+              <textarea
+                id="peditdesc"
+                rows={4}
+                placeholder="Description"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-1 focus:ring-ring"
+                value={editProjectDesc}
+                onChange={(e) => setEditProjectDesc(e.target.value)}
+                maxLength={500}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="peditstatus" className="text-sm font-medium">Status</label>
+              <select
+                id="peditstatus"
+                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm focus-visible:outline-none focus:ring-1 focus:ring-ring"
+                value={editProjectStatus}
+                onChange={(e) => setEditProjectStatus(e.target.value)}
+              >
+                <option value="Active">Active</option>
+                <option value="Paused">Paused</option>
+                <option value="Draft">Draft</option>
+                <option value="Archived">Archived</option>
+              </select>
+            </div>
+
+            {editSchemaError && (
+              <p className="text-xs text-red-500 rounded-lg bg-red-50 border border-red-100 p-2.5">
+                {editSchemaError}
+              </p>
+            )}
+
+            <div className="flex gap-2 pt-4">
+              <Button type="button" variant="outline" onClick={() => setOpenEditSheet(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
+    </>
+  )
 }

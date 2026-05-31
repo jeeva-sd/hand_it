@@ -54,6 +54,7 @@ model User {
   createdWorkspaces    Workspace[]       @relation("workspace_creator")
   lastUsedWorkspace    Workspace?        @relation("workspace_last_used_by_users", fields: [lastUsedWorkspaceId], references: [id], onDelete: SetNull)
   workspaceMemberships WorkspaceMember[]
+  projectFavorites     ProjectFavorite[]
 
   @@index([fname], map: "idx_user_fname")
   @@index([lname], map: "idx_user_lname")
@@ -105,11 +106,26 @@ model Project {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  workspace Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  favorites ProjectFavorite[]
 
   @@index([workspaceId], map: "idx_project_workspace")
   @@index([workspaceId, status], map: "idx_project_workspace_status")
   @@map("projects")
+}
+
+model ProjectFavorite {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId], map: "uk_project_favorite_project_user")
+  @@index([userId], map: "idx_project_favorite_user")
+  @@map("project_favorites")
 }
 
 model WorkspaceMember {

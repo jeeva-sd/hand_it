@@ -86,3 +86,15 @@ export type ProjectActivity = {
   message: string
   createdAt: string
 }
+
+export type PaginationMeta = {
+  totalItems: number
+  totalPages: number
+  currentPage: number
+  pageSize: number
+}
+
+export type PaginatedProjects = {
+  projects: Project[]
+  meta: PaginationMeta
+}
