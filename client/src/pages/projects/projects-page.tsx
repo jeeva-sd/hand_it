@@ -666,7 +666,7 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
   const hasProjectRoute = projectId.length > 0
   const workspaceQuery = useWorkspaceQuery(workspaceId)
 
-  const isWorkspaceReady = workspaceQuery.isSuccess
+  const isWorkspaceReady = workspaceId.length > 0
   const projectsQuery = useProjectsQuery(workspaceId, !hasProjectRoute && isWorkspaceReady)
   const projectQuery = useProjectQuery(workspaceId, hasProjectRoute ? projectId : "", hasProjectRoute && isWorkspaceReady)
   const isProjectNotFound =

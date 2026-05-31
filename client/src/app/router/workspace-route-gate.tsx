@@ -26,7 +26,7 @@ export function WorkspaceRouteGate({ children }: WorkspaceRouteGateProps) {
   const setLastUsedWorkspace = useAuthStore((state) => state.setLastUsedWorkspace)
 
   const { hasFetchedWorkspaceList, isHydrating, isWorkspaceListError, resolvedWorkspaceId, workspaces } =
-    useResolvedWorkspaceId()
+    useResolvedWorkspaceId(workspaceId)
   const workspaceQuery = useWorkspaceQuery(workspaceId)
 
   const routeWorkspaceFromStore = workspaces.find((workspace) => workspace.id === workspaceId)

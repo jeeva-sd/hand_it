@@ -17,7 +17,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   setWorkspaces: (workspaces) => {
     const currentWorkspaces = get().workspaces
     const currentActiveWorkspaceId = get().activeWorkspaceId
-    const nextActiveWorkspaceId = workspaces.some((workspace) => workspace.id === currentActiveWorkspaceId)
+    const nextActiveWorkspaceId = currentActiveWorkspaceId
       ? currentActiveWorkspaceId
       : workspaces[0]?.id ?? ""
 
@@ -67,12 +67,6 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
   },
   setActiveWorkspace: (workspaceId) => {
     if (get().activeWorkspaceId === workspaceId) {
-      return
-    }
-
-    const exists = get().workspaces.some((workspace) => workspace.id === workspaceId)
-
-    if (!exists) {
       return
     }
 

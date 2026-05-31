@@ -53,12 +53,12 @@ export function PostLoginResolverPage() {
   }, [fetchedWorkspaces, setWorkspaces])
 
   useEffect(() => {
-    if (isPending) {
-      return
-    }
-
     const fallbackWorkspaceId = workspaces[0]?.id ?? ""
     const preferredWorkspaceId = lastUsedWorkspace?.id ?? fallbackWorkspaceId
+
+    if (!preferredWorkspaceId && isPending) {
+      return
+    }
 
     if (preferredWorkspaceId && preferredWorkspaceId !== activeWorkspaceId) {
       setActiveWorkspace(preferredWorkspaceId)

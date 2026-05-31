@@ -4,7 +4,7 @@ import { useWorkspacesQuery } from "@/features/workspace/use-workspaces-query"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
 
-export function useResolvedWorkspaceId() {
+export function useResolvedWorkspaceId(excludeId?: string) {
   const authStatus = useAuthStore((state) => state.status)
   const lastUsedWorkspace = useAuthStore((state) => state.lastUsedWorkspace)
 
@@ -25,19 +25,28 @@ export function useResolvedWorkspaceId() {
   }, [fetchedWorkspaces, setWorkspaces])
 
   const resolvedWorkspaceId = useMemo(() => {
-    if (lastUsedWorkspace?.id && (workspaces.length === 0 || workspaces.some((workspace) => workspace.id === lastUsedWorkspace.id))) {
+    const availableWorkspaces = excludeId
+      ? workspaces.filter((w) => w.id !== excludeId)
+      : workspaces
+
+    if (lastUsedWorkspace?.id && lastUsedWorkspace.id !== excludeId) {
       return lastUsedWorkspace.id
     }
 
-    if (activeWorkspaceId && (workspaces.length === 0 || workspaces.some((workspace) => workspace.id === activeWorkspaceId))) {
+    if (activeWorkspaceId && activeWorkspaceId !== excludeId) {
       return activeWorkspaceId
     }
 
-    return workspaces[0]?.id ?? ""
-  }, [activeWorkspaceId, lastUsedWorkspace?.id, workspaces])
+    return availableWorkspaces[0]?.id ?? ""
+  }, [activeWorkspaceId, lastUsedWorkspace?.id, workspaces, excludeId])
+
+  const hasFallbackId = Boolean(
+    (lastUsedWorkspace?.id && lastUsedWorkspace.id !== excludeId) ||
+    (activeWorkspaceId && activeWorkspaceId !== excludeId)
+  )
 
   return {
-    isHydrating: isPending && workspaces.length === 0,
+    isHydrating: !hasFallbackId && isPending && workspaces.length === 0,
     hasFetchedWorkspaceList: isFetched,
     isWorkspaceListError: isError,
     resolvedWorkspaceId,
