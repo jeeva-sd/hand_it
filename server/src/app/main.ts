@@ -84,14 +84,14 @@ class App {
 
         // Add performance monitoring hook
         if (shouldTrackRequestTiming) {
-            appInstance.addHook('onRequest', request => {
+            appInstance.addHook('onRequest', async request => {
                 const req = request as RequestX<unknown>;
                 req.startTime = Date.now(); // Track request start time for performance monitoring
             });
         }
 
         // File cleanup hook
-        appInstance.addHook('onResponse', request => {
+        appInstance.addHook('onResponse', async request => {
             const req = request as RequestX<unknown>;
 
             if (shouldCleanupUploadedFiles) {

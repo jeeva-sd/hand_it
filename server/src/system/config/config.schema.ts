@@ -85,16 +85,83 @@ const payloadConfigSchema = z.object({
     decoratorKey: z.string()
 });
 
+const googleAuthConfigSchema = z
+    .object({
+        enabled: z.boolean().default(false),
+        clientId: z.string().trim().default(''),
+        clientSecret: z.string().trim().default(''),
+        redirectUri: z.string().trim().default(''),
+        scopes: z.array(z.string().trim().min(1)).default(['openid', 'email', 'profile']),
+        authorizationUrl: z.string().url().default('https://accounts.google.com/o/oauth2/v2/auth'),
+        tokenUrl: z.string().url().default('https://oauth2.googleapis.com/token'),
+        userInfoUrl: z.string().url().default('https://openidconnect.googleapis.com/v1/userinfo'),
+        successRedirectPath: z.string().trim().min(1).default('/projects'),
+        failureRedirectPath: z.string().trim().min(1).default('/auth/login')
+    })
+    .superRefine((value, ctx) => {
+        if (!value.enabled) {
+            return;
+        }
+
+        if (!value.clientId) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['clientId'],
+                message: 'Google auth clientId is required when Google auth is enabled'
+            });
+        }
+
+        if (!value.clientSecret) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['clientSecret'],
+                message: 'Google auth clientSecret is required when Google auth is enabled'
+            });
+        }
+
+        if (!value.redirectUri) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['redirectUri'],
+                message: 'Google auth redirectUri is required when Google auth is enabled'
+            });
+            return;
+        }
+
+        const redirectUriCheck = z.string().url();
+        const parsedRedirectUri = redirectUriCheck.safeParse(value.redirectUri);
+
+        if (!parsedRedirectUri.success) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['redirectUri'],
+                message: 'Google auth redirectUri must be a valid URL'
+            });
+        }
+    });
+
 const authConfigSchema = z.object({
     publicAuthKey: z.string(),
     skipJwtAuthKey: z.string(),
     encryptionKey: z.string(),
     roleKey: z.string(),
     permissionKey: z.string(),
-    tokenCookieNames: z.array(z.string().trim().min(1)).default(['token']),
+    tokenCookieNames: z.array(z.string().trim().min(1)).default(['handit_auth_token']),
     basicJWT: z.object({ name: z.string(), secret: z.string(), expiresIn: z.number() }),
     // Optional secondary JWT block for future token flavors.
-    secondaryJWT: z.object({ name: z.string(), secret: z.string(), expiresIn: z.number() }).optional()
+    secondaryJWT: z.object({ name: z.string(), secret: z.string(), expiresIn: z.number() }).optional(),
+    google: googleAuthConfigSchema.default({
+        enabled: false,
+        clientId: '',
+        clientSecret: '',
+        redirectUri: '',
+        scopes: ['openid', 'email', 'profile'],
+        authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+        tokenUrl: 'https://oauth2.googleapis.com/token',
+        userInfoUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
+        successRedirectPath: '/projects',
+        failureRedirectPath: '/auth/login'
+    })
 });
 
 export const viewEngineSchema = z.object({
@@ -178,9 +245,15 @@ const gracefulShutdownConfigSchema = z.object({
 
 const emailConfigSchema = z
     .object({
-        from: z.email('Invalid from email address'),
-        apiKey: z.string().nonempty('SendGrid API key is required'),
-        enabled: z.boolean()
+        host: z.string().trim().min(1, 'SMTP host is required'),
+        port: z.number().int().min(1).max(65_535),
+        secure: z.boolean(),
+        auth: z.object({
+            user: z.string().trim().min(1, 'SMTP username is required'),
+            pass: z.string().trim().min(1, 'SMTP password is required')
+        }),
+        from: z.string().trim().min(1, 'Sender name or email is required'),
+        enabled: z.boolean().default(true)
     })
     .optional();
 

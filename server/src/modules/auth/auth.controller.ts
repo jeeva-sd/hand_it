@@ -1,5 +1,5 @@
 import '@fastify/view';
-import { Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { RequestX } from '~/shared/types/request.type';
 import { Sanitize } from '~/system';
@@ -17,81 +17,98 @@ import {
     SignupPayload,
     signupSchema
 } from './schemas';
+import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
     constructor(private readonly authService: AuthService) {}
 
-    @SkipJwtAuth()
-    @Sanitize(signupSchema)
-    @Post('signup')
-    async signup(@Req() request: RequestX<SignupPayload>) {
-        const payload = request.payload as SignupPayload;
-        return this.authService.signup(payload);
+    @Get('me')
+    @HttpCode(200)
+    @UseGuards(JwtAuthGuard)
+    async me(@Req() request: RequestX<unknown>) {
+        return this.authService.getMe(request.user);
     }
 
+    @Post('signup')
+    @SkipJwtAuth()
+    @Sanitize(signupSchema)
+    async signup(@Req() request: RequestX<SignupPayload>) {
+        return this.authService.signup(request.payload);
+    }
+
+    @Post('login')
     @SkipJwtAuth()
     @HttpCode(200)
     @Sanitize(loginSchema)
-    @Post('login')
     async login(@Req() request: RequestX<LoginPayload>, @Res({ passthrough: true }) response: FastifyReply) {
-        const payload = request.payload as LoginPayload;
-        const result = await this.authService.login(payload);
+        const result = await this.authService.login(request.payload);
         this.authService.attachAuthCookie(response, result.token);
         return result;
     }
 
-    @SkipJwtAuth()
+    @Post('logout')
     @HttpCode(200)
-    @Sanitize(forgetPasswordSchema)
+    @SkipJwtAuth()
+    logout(@Res({ passthrough: true }) response: FastifyReply) {
+        this.authService.clearAuthCookie(response);
+        return { message: 'Logged out successfully' };
+    }
+
     @Post('forget')
+    @SkipJwtAuth()
+    @HttpCode(200)
+    @Sanitize(forgetPasswordSchema)
     async forgetPassword(@Req() request: RequestX<ForgetPasswordPayload>) {
-        const payload = request.payload as ForgetPasswordPayload;
-        return this.authService.forgetPassword(payload);
+        return this.authService.forgetPassword(request.payload);
     }
 
     @SkipJwtAuth()
     @HttpCode(200)
-    @Sanitize(forgetPasswordSchema)
     @Post('forgot-password')
+    @Sanitize(forgetPasswordSchema)
     async forgotPassword(@Req() request: RequestX<ForgetPasswordPayload>) {
-        const payload = request.payload as ForgetPasswordPayload;
-        return this.authService.forgetPassword(payload);
+        return this.authService.forgetPassword(request.payload);
     }
 
     @SkipJwtAuth()
-    @Sanitize(resetPasswordPageSchema)
+    @HttpCode(200)
+    @Post('forget-password')
+    @Sanitize(forgetPasswordSchema)
+    async forgetPasswordAlias(@Req() request: RequestX<ForgetPasswordPayload>) {
+        return this.authService.forgetPassword(request.payload);
+    }
+
+    @SkipJwtAuth()
     @Get('reset-password')
+    @Sanitize(resetPasswordPageSchema)
     async renderResetPasswordPage(@Req() request: RequestX<ResetPasswordPagePayload>, @Res() response: FastifyReply) {
-        const payload = request.payload as ResetPasswordPagePayload;
-        const pageModel = await this.authService.getResetPasswordPage(payload.token);
+        const pageModel = await this.authService.getResetPasswordPage(request.payload.token);
         return response.type('text/html').view('password-reset', pageModel);
     }
 
     @SkipJwtAuth()
     @HttpCode(200)
-    @Sanitize(resetPasswordSchema)
     @Post('reset-password')
+    @Sanitize(resetPasswordSchema)
     async resetPassword(
         @Req() request: RequestX<ResetPasswordPayload>,
         @Res({ passthrough: true }) response: FastifyReply
     ) {
-        const payload = request.payload as ResetPasswordPayload;
-        const result = await this.authService.resetPassword(payload);
+        const result = await this.authService.resetPassword(request.payload);
         this.authService.attachAuthCookie(response, result.token);
         return result;
     }
 
     @SkipJwtAuth()
     @HttpCode(200)
-    @Sanitize(resetPasswordSchema)
     @Post('reset')
+    @Sanitize(resetPasswordSchema)
     async resetPasswordAlias(
         @Req() request: RequestX<ResetPasswordPayload>,
         @Res({ passthrough: true }) response: FastifyReply
     ) {
-        const payload = request.payload as ResetPasswordPayload;
-        const result = await this.authService.resetPassword(payload);
+        const result = await this.authService.resetPassword(request.payload);
         this.authService.attachAuthCookie(response, result.token);
         return result;
     }

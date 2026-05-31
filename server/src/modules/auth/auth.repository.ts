@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { AuthTokenType } from '@prisma/client';
+import { AuthTokenType, UserStatus } from '@prisma/client';
 import { PrismaService } from '~/integrations';
 import { PrismaClientLike, PrismaTransaction } from '~/shared/types/prisma';
 
-type CreateUserData = { fname: string; lname: string; email: string; status: number };
+type CreateUserData = { fname: string; lname: string; email: string; status: UserStatus };
 
 type UpdateUserProfileData = { id: string; fname: string; lname: string };
 
@@ -15,7 +15,9 @@ type FindAuthTokenByHashData = { tokenHash: string };
 
 type ConsumeAuthTokenData = { id: string; usedAt: Date };
 
-type UpdateUserPasswordData = { id: string; passwordHash: string; status: number };
+type UpdateUserPasswordData = { id: string; passwordHash: string; status: UserStatus };
+
+type UpdateUserStatusData = { id: string; status: UserStatus };
 
 type MarkAllUserAuthTokensUsedData = { userId: string; usedAt: Date };
 
@@ -28,7 +30,9 @@ export class AuthRepository {
     }
 
     async findUserByEmail(data: { email: string }, transaction?: PrismaTransaction) {
-        return this.txHandler(transaction).user.findUnique({ where: { email: data.email } });
+        return this.txHandler(transaction).user.findUnique({
+            where: { email: data.email, status: { not: UserStatus.DELETED } }
+        });
     }
 
     async findUserById(data: { id: string }, transaction?: PrismaTransaction) {
@@ -80,6 +84,10 @@ export class AuthRepository {
             where: { id: data.id },
             data: { passwordHash: data.passwordHash, status: data.status }
         });
+    }
+
+    async updateUserStatus(data: UpdateUserStatusData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).user.update({ where: { id: data.id }, data: { status: data.status } });
     }
 
     async markAllUserAuthTokensUsed(data: MarkAllUserAuthTokensUsedData, transaction?: PrismaTransaction) {

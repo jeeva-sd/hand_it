@@ -3,46 +3,64 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Welcome to Handit</title>
 	<style>
 		body {
-			font-family: Arial, sans-serif;
-			color: #333;
-			line-height: 1.6;
 			margin: 0;
 			padding: 0;
+			background: #f5f8ff;
+			font-family: "Segoe UI", Arial, sans-serif;
+			color: #0f172a;
 		}
 		.container {
-			max-width: 600px;
-			margin: 0 auto;
-			padding: 20px;
-			border: 1px solid #ddd;
-			border-radius: 5px;
+			max-width: 620px;
+			margin: 24px auto;
+			background: #ffffff;
+			border-radius: 14px;
+			overflow: hidden;
+			border: 1px solid #dbe6ff;
+			box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
 		}
-		.header {
-			text-align: right;
-			margin-bottom: 15px;
+		.content {
+			padding: 30px;
 		}
-		.header-logo {
-			width: 80px;
-			height: auto;
+		.brand {
+			margin: 0 0 16px;
+			color: #2563eb;
+			font-size: 22px;
+			font-weight: 700;
+			letter-spacing: 0.02em;
 		}
 		h1 {
-			margin: 0 0 10px 0;
-			color: #2c3e50;
-			font-size: 24px;
+			margin: 0 0 14px;
+			font-size: 26px;
+			line-height: 1.3;
+			color: #1e3a8a;
 		}
 		p {
-			margin: 10px 0;
+			margin: 0 0 14px;
+			font-size: 15px;
+			line-height: 1.6;
+			color: #334155;
+		}
+		.footer {
+			margin-top: 20px;
+			padding-top: 16px;
+			border-top: 1px solid #e2e8f0;
+			color: #64748b;
+			font-size: 12px;
 		}
 	</style>
 </head>
 <body>
 	<div class="container">
-		<div class="header">
-			<img src="{{logoUrl}}" alt="Logo" class="header-logo" />
+		<div class="content">
+			<p class="brand">Handit</p>
+			<h1>Welcome, {{titleCase name}}!</h1>
+			<p>Thank you for joining Handit.</p>
+			<p>Your account is now ready and you can start using the platform.</p>
+			<p class="footer">Handit</p>
 		</div>
-		<h1>Welcome, {{titleCase name}}!</h1>
-		<p>Thanks for joining us. We are excited to have you.</p>
 	</div>
 </body>
 </html>

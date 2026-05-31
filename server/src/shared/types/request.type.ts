@@ -11,7 +11,7 @@ export type TokenData = {
 export interface RequestX<T> extends FastifyRequest {
     user?: TokenData;
     userPermissions?: string[];
-    payload?: T;
+    payload: T;
     startTime?: number;
     uploadedFiles?: FileDetail[];
     skipFileCleanup?: boolean; // Flag to skip file cleanup entirely
