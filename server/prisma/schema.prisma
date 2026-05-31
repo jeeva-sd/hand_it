@@ -33,6 +33,13 @@ enum WorkspaceRole {
   VIEWER
 }
 
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  DRAFT
+  ARCHIVED
+}
+
 model User {
   id                   String            @id @default(cuid())
   fname                String            @db.VarChar(50)
@@ -78,10 +85,27 @@ model Workspace {
   updatedAt         DateTime          @updatedAt
   createdByUser     User              @relation("workspace_creator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   members           WorkspaceMember[]
+  projects          Project[]
 
   @@index([createdByUserId], map: "idx_workspace_created_by")
   @@index([plan], map: "idx_workspace_plan")
   @@map("workspaces")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  workspaceId String
+  name        String        @db.VarChar(120)
+  description String?       @db.VarChar(500)
+  status      ProjectStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId], map: "idx_project_workspace")
+  @@index([workspaceId, status], map: "idx_project_workspace_status")
+  @@map("projects")
 }
 
 model WorkspaceMember {

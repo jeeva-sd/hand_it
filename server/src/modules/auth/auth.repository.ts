@@ -21,6 +21,10 @@ type UpdateUserStatusData = { id: string; status: UserStatus };
 
 type MarkAllUserAuthTokensUsedData = { userId: string; usedAt: Date };
 
+type FindMostRecentWorkspaceMembershipByUserData = { userId: string };
+
+type FindWorkspaceMembershipByUserAndWorkspaceData = { userId: string; workspaceId: string };
+
 @Injectable()
 export class AuthRepository {
     constructor(private readonly prisma: PrismaService) {}
@@ -94,6 +98,47 @@ export class AuthRepository {
         return this.txHandler(transaction).authToken.updateMany({
             where: { userId: data.userId, usedAt: null },
             data: { usedAt: data.usedAt }
+        });
+    }
+
+    async findMostRecentWorkspaceMembershipByUser(
+        data: FindMostRecentWorkspaceMembershipByUserData,
+        transaction?: PrismaTransaction
+    ) {
+        return this.txHandler(transaction).workspaceMember.findFirst({
+            where: { userId: data.userId },
+            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+            select: {
+                workspaceId: true,
+                role: true,
+                workspace: {
+                    select: {
+                        id: true,
+                        name: true,
+                        plan: true
+                    }
+                }
+            }
+        });
+    }
+
+    async findWorkspaceMembershipByUserAndWorkspace(
+        data: FindWorkspaceMembershipByUserAndWorkspaceData,
+        transaction?: PrismaTransaction
+    ) {
+        return this.txHandler(transaction).workspaceMember.findFirst({
+            where: { userId: data.userId, workspaceId: data.workspaceId },
+            select: {
+                workspaceId: true,
+                role: true,
+                workspace: {
+                    select: {
+                        id: true,
+                        name: true,
+                        plan: true
+                    }
+                }
+            }
         });
     }
 }

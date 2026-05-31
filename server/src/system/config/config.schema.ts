@@ -95,7 +95,7 @@ const googleAuthConfigSchema = z
         authorizationUrl: z.string().url().default('https://accounts.google.com/o/oauth2/v2/auth'),
         tokenUrl: z.string().url().default('https://oauth2.googleapis.com/token'),
         userInfoUrl: z.string().url().default('https://openidconnect.googleapis.com/v1/userinfo'),
-        successRedirectPath: z.string().trim().min(1).default('/projects'),
+        successRedirectPath: z.string().trim().min(1).default('/post-login'),
         failureRedirectPath: z.string().trim().min(1).default('/auth/login')
     })
     .superRefine((value, ctx) => {
@@ -159,7 +159,7 @@ const authConfigSchema = z.object({
         authorizationUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
         tokenUrl: 'https://oauth2.googleapis.com/token',
         userInfoUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
-        successRedirectPath: '/projects',
+        successRedirectPath: '/post-login',
         failureRedirectPath: '/auth/login'
     })
 });

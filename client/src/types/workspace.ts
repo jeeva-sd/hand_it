@@ -7,6 +7,22 @@ export type Workspace = {
   memberCount: number
 }
 
+export type WorkspaceMemberRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER"
+
+export type WorkspaceMember = {
+  id: string
+  userId: string
+  role: WorkspaceMemberRole
+  joinedAt: string
+  updatedAt: string
+  user: {
+    id: string
+    fname: string
+    lname: string
+    email: string
+  }
+}
+
 export type ProjectStatus = "Active" | "Paused" | "Draft" | "Archived"
 
 export type Project = {

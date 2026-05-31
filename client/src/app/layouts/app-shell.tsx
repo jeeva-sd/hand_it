@@ -1,26 +1,25 @@
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { appPaths, resolveWorkspaceSwitchPath } from "@/app/router/paths"
 import { useProjectsQuery } from "@/features/project/use-projects-query"
-import {
-  workspaceFavoriteProjectIds,
-  workspaceRecentProjectIds,
-} from "@/features/workspace/workspace.data"
 import { logoutSession } from "@/services/auth.service"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
-import { useEffect, useMemo } from "react"
-import { Outlet, useLocation, useNavigate } from "react-router-dom"
+import { useMemo } from "react"
+import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom"
 
 function getPageTitle(pathname: string) {
-  if (pathname.startsWith("/projects/") && pathname.split("/").length > 2) {
+  const routePath = pathname.replace(/^\/w\/[^/]+/, "")
+
+  if (routePath.startsWith("/projects/")) {
     return "Project"
   }
 
-  if (pathname.startsWith("/projects")) {
+  if (routePath.startsWith("/projects")) {
     return "All Projects"
   }
 
-  if (pathname.startsWith("/settings")) {
+  if (routePath.startsWith("/settings")) {
     return "Workspace"
   }
 
@@ -30,63 +29,77 @@ function getPageTitle(pathname: string) {
 export function AppShellLayout() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { workspaceId = "" } = useParams()
 
   const authUser = useAuthStore((state) => state.user)
   const lastUsedWorkspace = useAuthStore((state) => state.lastUsedWorkspace)
+  const setLastUsedWorkspace = useAuthStore((state) => state.setLastUsedWorkspace)
   const clearSession = useAuthStore((state) => state.clearSession)
 
   const workspaces = useWorkspaceStore((state) => state.workspaces)
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const setActiveWorkspace = useWorkspaceStore((state) => state.setActiveWorkspace)
 
-  useEffect(() => {
-    if (!lastUsedWorkspace?.id) {
-      return
-    }
-
-    setActiveWorkspace(lastUsedWorkspace.id)
-  }, [lastUsedWorkspace?.id, setActiveWorkspace])
-
   const activeWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0]
+    workspaces.find((workspace) => workspace.id === workspaceId) ??
+    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
+    workspaces[0]
 
-  const { data: projects = [] } = useProjectsQuery(activeWorkspaceId)
+  const currentWorkspaceId = workspaceId || activeWorkspace?.id || lastUsedWorkspace?.id || ""
 
-  const projectMap = useMemo(() => {
-    return new Map(projects.map((project) => [project.id, project]))
-  }, [projects])
+  const { data: projects = [] } = useProjectsQuery(currentWorkspaceId)
 
   const favorites = useMemo(() => {
-    const favoriteIds = workspaceFavoriteProjectIds[activeWorkspaceId] ?? []
+    if (!currentWorkspaceId) {
+      return []
+    }
 
-    return favoriteIds
-      .map((projectId) => projectMap.get(projectId))
-      .filter((project) => project !== undefined)
+    return projects
+      .filter((project) => project.isFavorite)
       .map((project) => ({
         id: project.id,
         name: project.name,
-        url: `/projects/${project.id}`,
+        url: appPaths.workspaceProjectSection(currentWorkspaceId, project.id, "files"),
       }))
-  }, [activeWorkspaceId, projectMap])
+  }, [currentWorkspaceId, projects])
 
   const recentProjects = useMemo(() => {
-    const recentIds = workspaceRecentProjectIds[activeWorkspaceId] ?? []
+    if (!currentWorkspaceId) {
+      return []
+    }
 
-    return recentIds
-      .map((projectId) => projectMap.get(projectId))
-      .filter((project) => project !== undefined)
+    const parseUpdatedAt = (value: string) => {
+      const parsed = Date.parse(value)
+
+      return Number.isNaN(parsed) ? 0 : parsed
+    }
+
+    return [...projects]
+      .sort((left, right) => parseUpdatedAt(right.updatedAt) - parseUpdatedAt(left.updatedAt))
+      .slice(0, 5)
       .map((project) => ({
         id: project.id,
         name: project.name,
-        url: `/projects/${project.id}`,
+        url: appPaths.workspaceProjectSection(currentWorkspaceId, project.id, "files"),
       }))
-  }, [activeWorkspaceId, projectMap])
+  }, [currentWorkspaceId, projects])
 
-  const sidebarWorkspaces = workspaces.map((workspace) => ({
-    id: workspace.id,
-    name: workspace.name,
-    plan: workspace.plan,
-  }))
+  const sidebarWorkspaces =
+    workspaces.length > 0
+      ? workspaces.map((workspace) => ({
+          id: workspace.id,
+          name: workspace.name,
+          plan: workspace.plan,
+        }))
+      : lastUsedWorkspace
+        ? [
+            {
+              id: lastUsedWorkspace.id,
+              name: lastUsedWorkspace.name,
+              plan: lastUsedWorkspace.plan,
+            },
+          ]
+        : []
 
   const user = {
     name: authUser ? `${authUser.fname} ${authUser.lname}`.trim() : "HandIt User",
@@ -94,34 +107,44 @@ export function AppShellLayout() {
     avatar: "/avatars/user.jpg",
   }
 
-  const fallbackWorkspace = {
-    id: "workspace",
-    name: "Workspace",
-    plan: "Free",
-  }
-
-  const workspaceForHeader = activeWorkspace ?? fallbackWorkspace
-
-  const layoutWorkspaces =
-    sidebarWorkspaces.length > 0
-      ? sidebarWorkspaces
-      : [
-          {
-            id: fallbackWorkspace.id,
-            name: fallbackWorkspace.name,
-            plan: fallbackWorkspace.plan,
-          },
-        ]
-
-  const currentWorkspaceId = activeWorkspace?.id ?? fallbackWorkspace.id
+  const workspaceForHeaderName = activeWorkspace?.name ?? lastUsedWorkspace?.name ?? "Workspace"
 
   const handleSignOut = () => {
     void logoutSession()
       .catch(() => undefined)
       .finally(() => {
         clearSession()
-        navigate("/auth/login", { replace: true })
+        navigate(appPaths.authLogin, { replace: true })
       })
+  }
+
+  const handleCreateWorkspace = () => {
+    navigate(appPaths.createWorkspace)
+  }
+
+  const handleWorkspaceChange = (workspaceId: string) => {
+    if (workspaceId === currentWorkspaceId) {
+      return
+    }
+
+    setActiveWorkspace(workspaceId)
+
+    const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId)
+
+    if (!selectedWorkspace) {
+      return
+    }
+
+    setLastUsedWorkspace({
+      id: selectedWorkspace.id,
+      name: selectedWorkspace.name,
+      plan: selectedWorkspace.plan,
+      roleId: lastUsedWorkspace?.roleId ?? null,
+      accessId: lastUsedWorkspace?.accessId ?? null,
+    })
+
+    const nextPath = resolveWorkspaceSwitchPath(location.pathname, workspaceId)
+    navigate(`${nextPath}${location.search}${location.hash}`, { replace: true })
   }
 
   return (
@@ -129,9 +152,10 @@ export function AppShellLayout() {
       <AppSidebar
         user={user}
         onSignOut={handleSignOut}
-        workspaces={layoutWorkspaces}
+        onCreateWorkspace={handleCreateWorkspace}
+        workspaces={sidebarWorkspaces}
         activeWorkspaceId={currentWorkspaceId}
-        onWorkspaceChange={setActiveWorkspace}
+        onWorkspaceChange={handleWorkspaceChange}
         favorites={favorites}
         recentProjects={recentProjects}
       />
@@ -142,7 +166,7 @@ export function AppShellLayout() {
             <div className="min-w-0">
               <p className="truncate text-xs text-muted-foreground">Workspace</p>
               <h1 className="truncate text-sm font-medium">
-                {workspaceForHeader.name} · {getPageTitle(location.pathname)}
+                {workspaceForHeaderName} · {getPageTitle(location.pathname)}
               </h1>
             </div>
             <div className="ml-auto hidden text-xs text-muted-foreground md:block">

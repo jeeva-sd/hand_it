@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, WorkspacePlan, WorkspaceRole } from '@prisma/client';
+import { Prisma, ProjectStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '~/integrations';
 import { PrismaClientLike, PrismaTransaction } from '~/shared/types/prisma';
 
@@ -12,6 +12,15 @@ type FindWorkspaceMembershipData = { workspaceId: string; userId: string };
 type FindWorkspaceByUserData = { workspaceId: string; userId: string };
 
 type UpdateWorkspaceData = { workspaceId: string; name: string };
+
+type DeleteWorkspaceData = { workspaceId: string };
+
+type CreateProjectData = {
+    workspaceId: string;
+    name: string;
+    description?: string | null;
+    status?: ProjectStatus;
+};
 
 const workspaceSelect = {
     id: true,
@@ -29,7 +38,35 @@ const workspaceMemberWithWorkspaceSelect = {
     workspace: { select: workspaceSelect }
 } satisfies Prisma.WorkspaceMemberSelect;
 
+const workspaceMemberListSelect = {
+    id: true,
+    userId: true,
+    role: true,
+    createdAt: true,
+    updatedAt: true,
+    user: {
+        select: {
+            id: true,
+            fname: true,
+            lname: true,
+            email: true
+        }
+    }
+} satisfies Prisma.WorkspaceMemberSelect;
+
+const projectSelect = {
+    id: true,
+    workspaceId: true,
+    name: true,
+    description: true,
+    status: true,
+    createdAt: true,
+    updatedAt: true
+} satisfies Prisma.ProjectSelect;
+
 export type WorkspaceWithMemberCount = Prisma.WorkspaceGetPayload<{ select: typeof workspaceSelect }>;
+export type ProjectRecord = Prisma.ProjectGetPayload<{ select: typeof projectSelect }>;
+export type WorkspaceMemberRecord = Prisma.WorkspaceMemberGetPayload<{ select: typeof workspaceMemberListSelect }>;
 
 export type WorkspaceMembershipWithWorkspace = Prisma.WorkspaceMemberGetPayload<{
     select: typeof workspaceMemberWithWorkspaceSelect;
@@ -92,10 +129,45 @@ export class WorkspaceRepository {
         });
     }
 
+    async deleteWorkspace(data: DeleteWorkspaceData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).workspace.delete({
+            where: { id: data.workspaceId },
+            select: { id: true }
+        });
+    }
+
     async findWorkspaceMemberUserIds(data: { workspaceId: string }, transaction?: PrismaTransaction) {
         return this.txHandler(transaction).workspaceMember.findMany({
             where: { workspaceId: data.workspaceId },
             select: { userId: true }
+        });
+    }
+
+    async listWorkspaceMembers(data: { workspaceId: string }, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).workspaceMember.findMany({
+            where: { workspaceId: data.workspaceId },
+            orderBy: [{ createdAt: 'asc' }],
+            select: workspaceMemberListSelect
+        });
+    }
+
+    async createProject(data: CreateProjectData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).project.create({
+            data: {
+                workspaceId: data.workspaceId,
+                name: data.name,
+                description: data.description ?? null,
+                status: data.status ?? ProjectStatus.ACTIVE
+            },
+            select: projectSelect
+        });
+    }
+
+    async listProjectsByWorkspace(data: { workspaceId: string }, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).project.findMany({
+            where: { workspaceId: data.workspaceId },
+            orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+            select: projectSelect
         });
     }
 }

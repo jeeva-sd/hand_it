@@ -1,9 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { appConfig } from "@/config";
+import { buildPostLoginPath, storeContinuePath } from "@/app/router/post-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getGoogleSignInUrl, loginWithPassword } from "@/services/auth.service";
@@ -26,6 +26,7 @@ const MIN_PASSWORD_LENGTH = 8;
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const setAuthenticatedSession = useAuthStore((state) => state.setAuthenticatedSession);
 
   const [email, setEmail] = useState("");
@@ -38,10 +39,10 @@ export function LoginPage() {
     onSuccess: (result) => {
       setAuthenticatedSession({
         user: result.user,
-        lastUsedWorkspace: null,
+        lastUsedWorkspace: result.lastUsedWorkspace,
       });
 
-      navigate(appConfig.auth.redirectAfterLogin, { replace: true });
+      navigate(buildPostLoginPath(searchParams.get("continue")), { replace: true });
     },
     onError: (error) => {
       setFormError(resolveErrorMessage(error, "Unable to sign in. Please try again."));
@@ -64,6 +65,7 @@ export function LoginPage() {
   };
 
   const handleGoogleSignIn = () => {
+    storeContinuePath(searchParams.get("continue"));
     window.location.assign(getGoogleSignInUrl());
   };
 

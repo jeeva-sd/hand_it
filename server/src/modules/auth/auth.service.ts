@@ -9,7 +9,7 @@ import {
     UnauthorizedException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { AuthTokenType, User, UserStatus } from '@prisma/client';
+import { AuthTokenType, User, UserStatus, WorkspacePlan } from '@prisma/client';
 import { FastifyReply } from 'fastify';
 import { EmailsService, PrismaService } from '~/integrations';
 import { EMAIL_TYPES, EmailType } from '~/integrations/email/email.constants';
@@ -38,7 +38,15 @@ type AuthUserResponse = {
     updatedAt: Date;
 };
 
-type LastUsedWorkspaceResponse = { id: string; roleId: string | null; accessId: string | null };
+type WorkspacePlanLabel = 'Free' | 'Pro' | 'Team';
+
+type LastUsedWorkspaceResponse = {
+    id: string;
+    name: string;
+    plan: WorkspacePlanLabel;
+    roleId: string | null;
+    accessId: string | null;
+};
 
 type AuthPageModel = {
     valid: boolean;
@@ -138,8 +146,9 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
 
-        return { token, user: this.mapUser(user) };
+        return { token, user: this.mapUser(user), lastUsedWorkspace };
     }
 
     async getMe(tokenData?: TokenData) {
@@ -152,7 +161,9 @@ export class AuthService {
             throw new UnauthorizedException('Unauthorized');
         }
 
-        return { user: this.mapUser(user), lastUsedWorkspace: this.mapLastUsedWorkspace(tokenData) };
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(tokenData, user.id);
+
+        return { user: this.mapUser(user), lastUsedWorkspace };
     }
 
     async signup(payload: SignupPayload) {
@@ -196,8 +207,9 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
 
-        return { token, user: this.mapUser(user) };
+        return { token, user: this.mapUser(user), lastUsedWorkspace };
     }
 
     async forgetPassword(payload: ForgetPasswordPayload) {
@@ -300,9 +312,16 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
         const redirectUrl = this.buildClientRedirectUrl('/');
 
-        return { message: 'Password updated successfully', token, user: this.mapUser(user), redirectUrl };
+        return {
+            message: 'Password updated successfully',
+            token,
+            user: this.mapUser(user),
+            lastUsedWorkspace,
+            redirectUrl
+        };
     }
 
     attachAuthCookie(reply: FastifyReply, token: string): void {
@@ -336,16 +355,53 @@ export class AuthService {
         };
     }
 
-    private mapLastUsedWorkspace(tokenData: TokenData): LastUsedWorkspaceResponse | null {
-        const workspaceId = tokenData.workspaceId?.trim();
-        if (!workspaceId) {
+    private async resolveLastUsedWorkspace(
+        tokenData: TokenData | undefined,
+        userId: string
+    ): Promise<LastUsedWorkspaceResponse | null> {
+        const tokenWorkspaceId = tokenData?.workspaceId?.trim();
+
+        if (tokenWorkspaceId) {
+            const tokenMembership = await this.authRepository.findWorkspaceMembershipByUserAndWorkspace({
+                userId,
+                workspaceId: tokenWorkspaceId
+            });
+
+            if (tokenMembership) {
+                return {
+                    id: tokenMembership.workspace.id,
+                    name: tokenMembership.workspace.name,
+                    plan: this.mapWorkspacePlan(tokenMembership.workspace.plan),
+                    roleId: tokenData?.roleId?.trim() || tokenMembership.role,
+                    accessId: tokenData?.accessId?.trim() || null
+                };
+            }
+        }
+
+        const membership = await this.authRepository.findMostRecentWorkspaceMembershipByUser({ userId });
+
+        if (!membership) {
             return null;
         }
 
-        const roleId = tokenData.roleId?.trim() || null;
-        const accessId = tokenData.accessId?.trim() || null;
+        return {
+            id: membership.workspace.id,
+            name: membership.workspace.name,
+            plan: this.mapWorkspacePlan(membership.workspace.plan),
+            roleId: membership.role,
+            accessId: null
+        };
+    }
 
-        return { id: workspaceId, roleId, accessId };
+    private mapWorkspacePlan(plan: WorkspacePlan): WorkspacePlanLabel {
+        switch (plan) {
+            case WorkspacePlan.PRO:
+                return 'Pro';
+            case WorkspacePlan.TEAM:
+                return 'Team';
+            default:
+                return 'Free';
+        }
     }
 
     private buildTokenData(userId: string): TokenData {

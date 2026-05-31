@@ -1,7 +1,9 @@
 import * as React from "react"
 
+import { appPaths } from "@/app/router/paths"
 import { NavUser } from "@/components/nav-user"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,9 +55,16 @@ type SidebarUser = {
   avatar: string
 }
 
+function isProjectLinkActive(pathname: string, projectPath: string): boolean {
+  const projectBasePath = projectPath.replace(/\/files$/, "")
+
+  return pathname === projectBasePath || pathname.startsWith(`${projectBasePath}/`)
+}
+
 export function AppSidebar({
   user,
   onSignOut,
+  onCreateWorkspace,
   workspaces,
   activeWorkspaceId,
   onWorkspaceChange,
@@ -65,6 +74,7 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & {
   user: SidebarUser
   onSignOut: () => void
+  onCreateWorkspace: () => void
   workspaces: WorkspaceItem[]
   activeWorkspaceId: string
   onWorkspaceChange: (workspaceId: string) => void
@@ -75,6 +85,21 @@ export function AppSidebar({
 
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0]
+
+  const workspaceProjectsPath = activeWorkspace ? appPaths.workspaceProjects(activeWorkspace.id) : "/projects"
+  const workspaceMembersPath = activeWorkspace ? appPaths.workspaceMembers(activeWorkspace.id) : "/settings/members"
+  const workspaceBillingPath = activeWorkspace ? appPaths.workspaceBilling(activeWorkspace.id) : "/settings/billing"
+  const workspaceSettingsPath = activeWorkspace ? appPaths.workspaceSettings(activeWorkspace.id) : "/settings"
+
+  const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "--"
+  const isWorkspaceSettingsActive = /^\/w\/[^/]+\/settings(\/|$)/.test(location.pathname)
+  const [isWorkspaceSettingsOpen, setIsWorkspaceSettingsOpen] = React.useState(isWorkspaceSettingsActive)
+
+  React.useEffect(() => {
+    if (isWorkspaceSettingsActive) {
+      setIsWorkspaceSettingsOpen(true)
+    }
+  }, [isWorkspaceSettingsActive])
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -89,7 +114,7 @@ export function AppSidebar({
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
                     <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-[0.68rem] font-semibold text-sidebar-primary-foreground">
-                      {activeWorkspace?.name.slice(0, 2).toUpperCase()}
+                      {workspaceInitials}
                     </div>
                     <div className="min-w-0 text-left">
                       <p className="truncate text-sm font-medium">{activeWorkspace?.name}</p>
@@ -113,6 +138,11 @@ export function AppSidebar({
                     </div>
                   </DropdownMenuItem>
                 ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onCreateWorkspace} className="rounded-lg px-2 py-2">
+                  <PlusIcon className="size-4" />
+                  <span>Create workspace</span>
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
@@ -128,7 +158,7 @@ export function AppSidebar({
           <SidebarMenu>
             {favorites.map((project) => (
               <SidebarMenuItem key={project.id}>
-                <SidebarMenuButton asChild isActive={location.pathname === project.url}>
+                <SidebarMenuButton asChild isActive={isProjectLinkActive(location.pathname, project.url)}>
                   <Link to={project.url}>
                     <StarIcon className="size-3.5" />
                     <span>{project.name}</span>
@@ -154,7 +184,7 @@ export function AppSidebar({
           <SidebarMenu>
             {recentProjects.map((project) => (
               <SidebarMenuItem key={project.id}>
-                <SidebarMenuButton asChild isActive={location.pathname === project.url}>
+                <SidebarMenuButton asChild isActive={isProjectLinkActive(location.pathname, project.url)}>
                   <Link to={project.url}>
                     <span>{project.name}</span>
                   </Link>
@@ -170,15 +200,15 @@ export function AppSidebar({
             )}
             <SidebarMenuItem className="mt-1">
               <Button asChild variant="ghost" className="h-8 w-full justify-start rounded-md px-2 text-sm">
-                <Link to="/projects">
+                <Link to={workspaceProjectsPath}>
                   <PlusIcon className="size-4" />
                   New Project
                 </Link>
               </Button>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/projects"}>
-                <Link to="/projects">
+              <SidebarMenuButton asChild isActive={location.pathname === workspaceProjectsPath}>
+                <Link to={workspaceProjectsPath}>
                   <FolderIcon className="size-4" />
                   <span>All Projects</span>
                 </Link>
@@ -190,33 +220,42 @@ export function AppSidebar({
         <SidebarSeparator />
 
         <SidebarGroup>
-          <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/settings" && location.search.includes("tab=members")}>
-                <Link to="/settings?tab=members">
-                  <UsersIcon className="size-4" />
-                  <span>Members</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/settings" && location.search.includes("tab=billing")}>
-                <Link to="/settings?tab=billing">
-                  <CreditCardIcon className="size-4" />
-                  <span>Billing</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === "/settings" && location.search.includes("tab=settings")}>
-                <Link to="/settings?tab=settings">
-                  <SettingsIcon className="size-4" />
-                  <span>Settings</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
+          <Collapsible open={isWorkspaceSettingsOpen} onOpenChange={setIsWorkspaceSettingsOpen}>
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 hover:bg-sidebar-accent/50">
+                <span>Workspace</span>
+                <ChevronDownIcon className={`size-4 transition-transform ${isWorkspaceSettingsOpen ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === workspaceMembersPath}>
+                    <Link to={workspaceMembersPath}>
+                      <UsersIcon className="size-4" />
+                      <span>Members</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === workspaceBillingPath}>
+                    <Link to={workspaceBillingPath}>
+                      <CreditCardIcon className="size-4" />
+                      <span>Billing</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname === workspaceSettingsPath}>
+                    <Link to={workspaceSettingsPath}>
+                      <SettingsIcon className="size-4" />
+                      <span>Settings</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </CollapsibleContent>
+          </Collapsible>
         </SidebarGroup>
       </SidebarContent>
 

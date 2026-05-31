@@ -5,18 +5,28 @@ import {
     InternalServerErrorException,
     UnauthorizedException
 } from '@nestjs/common';
-import { WorkspacePlan, WorkspaceRole } from '@prisma/client';
+import { ProjectStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
 import { CacheService, PrismaService } from '~/integrations';
 import { TokenData } from '~/shared/types/request.type';
-import { CreateWorkspacePayload, UpdateWorkspacePayload, WorkspacePathPayload } from './schemas';
-import { WorkspaceRepository, WorkspaceWithMemberCount } from './workspace.repository';
+import { CreateWorkspacePayload, UpdateWorkspacePayload, WorkspacePathPayload } from '../schemas';
+import {
+    ProjectRecord,
+    WorkspaceMemberRecord,
+    WorkspaceRepository,
+    WorkspaceWithMemberCount
+} from '../repositories/workspace.repository';
 
 const FREE_WORKSPACE_STORAGE_LIMIT_BYTES = BigInt(2 * 1024 * 1024 * 1024);
 const WORKSPACE_LIST_CACHE_TTL_SECONDS = 60;
 const WORKSPACE_DETAIL_CACHE_TTL_SECONDS = 90;
+const WORKSPACE_MEMBERS_CACHE_TTL_SECONDS = 60;
 const EDITABLE_WORKSPACE_ROLES = new Set<WorkspaceRole>([WorkspaceRole.OWNER, WorkspaceRole.ADMIN]);
+const DELETABLE_WORKSPACE_ROLES = new Set<WorkspaceRole>([WorkspaceRole.OWNER]);
+const DEFAULT_PROJECT_NAME = 'My First Project';
+const DEFAULT_PROJECT_DESCRIPTION = 'Start uploading files and sharing deliverables from here.';
 
 type WorkspacePlanLabel = 'Free' | 'Pro' | 'Team';
+type ProjectStatusLabel = 'Active' | 'Paused' | 'Draft' | 'Archived';
 
 type WorkspaceResponse = {
     id: string;
@@ -27,6 +37,32 @@ type WorkspaceResponse = {
     storage: { usedBytes: number; limitBytes: number; remainingBytes: number };
     createdAt: Date;
     updatedAt: Date;
+};
+
+type ProjectResponse = {
+    id: string;
+    name: string;
+    description: string;
+    status: ProjectStatusLabel;
+    updatedAt: string;
+    fileCount: number;
+    shareCount: number;
+    members: string[];
+    isFavorite: boolean;
+};
+
+type WorkspaceMemberResponse = {
+    id: string;
+    userId: string;
+    role: WorkspaceRole;
+    joinedAt: Date;
+    updatedAt: Date;
+    user: {
+        id: string;
+        fname: string;
+        lname: string;
+        email: string;
+    };
 };
 
 @Injectable()
@@ -73,6 +109,16 @@ export class WorkspaceService {
                 tx
             );
 
+            await this.workspaceRepository.createProject(
+                {
+                    workspaceId: workspace.id,
+                    name: DEFAULT_PROJECT_NAME,
+                    description: DEFAULT_PROJECT_DESCRIPTION,
+                    status: ProjectStatus.ACTIVE
+                },
+                tx
+            );
+
             const workspaceForUser = await this.workspaceRepository.findWorkspaceByIdForUser(
                 { workspaceId: workspace.id, userId },
                 tx
@@ -95,6 +141,48 @@ export class WorkspaceService {
         );
 
         return { workspace };
+    }
+
+    async listProjects(payload: WorkspacePathPayload, tokenData?: TokenData) {
+        const userId = this.requireUserId(tokenData);
+
+        const membership = await this.workspaceRepository.findWorkspaceMembership({
+            workspaceId: payload.workspaceId,
+            userId
+        });
+
+        if (!membership) {
+            throw new ForbiddenException('You do not have access to this workspace');
+        }
+
+        const projects = await this.workspaceRepository.listProjectsByWorkspace({ workspaceId: payload.workspaceId });
+
+        return { projects: projects.map(project => this.mapProject(project)) };
+    }
+
+    async listMembers(payload: WorkspacePathPayload, tokenData?: TokenData) {
+        const userId = this.requireUserId(tokenData);
+        const workspaceId = payload.workspaceId;
+
+        const membership = await this.workspaceRepository.findWorkspaceMembership({ workspaceId, userId });
+
+        if (!membership) {
+            throw new ForbiddenException('You do not have access to this workspace');
+        }
+
+        const cacheKey = this.workspaceMembersCacheKey(workspaceId);
+        const cached = this.cacheService.get<WorkspaceMemberResponse[]>(cacheKey);
+
+        if (cached) {
+            return { members: cached };
+        }
+
+        const records = await this.workspaceRepository.listWorkspaceMembers({ workspaceId });
+        const members = records.map(record => this.mapWorkspaceMember(record));
+
+        this.cacheService.set(cacheKey, members, WORKSPACE_MEMBERS_CACHE_TTL_SECONDS);
+
+        return { members };
     }
 
     async getWorkspace(payload: WorkspacePathPayload, tokenData?: TokenData) {
@@ -160,6 +248,35 @@ export class WorkspaceService {
         return { workspace };
     }
 
+    async deleteWorkspace(payload: WorkspacePathPayload, tokenData?: TokenData) {
+        const userId = this.requireUserId(tokenData);
+        const workspaceId = payload.workspaceId;
+
+        const membership = await this.workspaceRepository.findWorkspaceMembership({ workspaceId, userId });
+
+        if (!membership) {
+            throw new ForbiddenException('You do not have access to this workspace');
+        }
+
+        if (!DELETABLE_WORKSPACE_ROLES.has(membership.role)) {
+            throw new ForbiddenException('Only workspace owners can delete this workspace');
+        }
+
+        const memberUserIds = await this.prisma.$transaction(async tx => {
+            const members = await this.workspaceRepository.findWorkspaceMemberUserIds({ workspaceId }, tx);
+
+            await this.workspaceRepository.deleteWorkspace({ workspaceId }, tx);
+
+            return members.map(member => member.userId);
+        });
+
+        this.cacheService.delByPrefix(this.workspaceDetailCachePrefix(workspaceId));
+        this.cacheService.delByPrefix(this.workspaceMembersCachePrefix(workspaceId));
+        this.invalidateWorkspaceListCaches(memberUserIds);
+
+        return { message: 'Workspace deleted successfully' };
+    }
+
     private mapWorkspace(workspace: WorkspaceWithMemberCount, role: WorkspaceRole): WorkspaceResponse {
         const usedBytes = Number(workspace.storageUsedBytes);
         const limitBytes = Number(workspace.storageLimitBytes);
@@ -176,6 +293,36 @@ export class WorkspaceService {
         };
     }
 
+    private mapProject(project: ProjectRecord): ProjectResponse {
+        return {
+            id: project.id,
+            name: project.name,
+            description: project.description ?? '',
+            status: this.mapProjectStatus(project.status),
+            updatedAt: project.updatedAt.toISOString(),
+            fileCount: 0,
+            shareCount: 0,
+            members: [],
+            isFavorite: false
+        };
+    }
+
+    private mapWorkspaceMember(member: WorkspaceMemberRecord): WorkspaceMemberResponse {
+        return {
+            id: member.id,
+            userId: member.userId,
+            role: member.role,
+            joinedAt: member.createdAt,
+            updatedAt: member.updatedAt,
+            user: {
+                id: member.user.id,
+                fname: member.user.fname,
+                lname: member.user.lname,
+                email: member.user.email
+            }
+        };
+    }
+
     private mapPlan(plan: WorkspacePlan): WorkspacePlanLabel {
         switch (plan) {
             case WorkspacePlan.PRO:
@@ -184,6 +331,19 @@ export class WorkspaceService {
                 return 'Team';
             default:
                 return 'Free';
+        }
+    }
+
+    private mapProjectStatus(status: ProjectStatus): ProjectStatusLabel {
+        switch (status) {
+            case ProjectStatus.PAUSED:
+                return 'Paused';
+            case ProjectStatus.DRAFT:
+                return 'Draft';
+            case ProjectStatus.ARCHIVED:
+                return 'Archived';
+            default:
+                return 'Active';
         }
     }
 
@@ -197,6 +357,14 @@ export class WorkspaceService {
 
     private workspaceDetailCacheKey(workspaceId: string, userId: string): string {
         return this.cacheService.key('workspace', 'detail', workspaceId, 'user', userId);
+    }
+
+    private workspaceMembersCachePrefix(workspaceId: string): string {
+        return this.cacheService.key('workspace', 'members', workspaceId);
+    }
+
+    private workspaceMembersCacheKey(workspaceId: string): string {
+        return this.workspaceMembersCachePrefix(workspaceId);
     }
 
     private invalidateWorkspaceListCaches(userIds: string[]): void {

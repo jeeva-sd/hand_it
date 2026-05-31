@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { appPaths } from "@/app/router/paths"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,17 +16,14 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { useProjectsQuery } from "@/features/project/use-projects-query"
-import {
-  projectActivityById,
-  projectFilesById,
-  projectSharesById,
-} from "@/features/workspace/workspace.data"
 import { cn } from "@/lib/utils"
 import { useWorkspaceStore } from "@/stores/workspace.store"
 import type {
   ActivityType,
   Project,
+  ProjectActivity,
   ProjectFileSection,
+  ProjectShare,
   WorkspaceFile,
 } from "@/types/workspace"
 import {
@@ -52,7 +50,7 @@ import {
   VideoIcon,
 } from "lucide-react"
 import { useMemo, useState } from "react"
-import { Link, useParams, useSearchParams } from "react-router-dom"
+import { Link, useNavigate, useParams } from "react-router-dom"
 
 type DirectoryFilter = "active" | "archived" | "favorites"
 type DirectoryView = "grid" | "list"
@@ -61,10 +59,6 @@ type FilesView = "list" | "grid"
 type FileSort = "name" | "date" | "size"
 
 const projectTabs: ProjectTab[] = ["files", "shares", "activity"]
-
-function isProjectTab(value: string | null): value is ProjectTab {
-  return value === "files" || value === "shares" || value === "activity"
-}
 
 function getFileIcon(type: WorkspaceFile["type"]) {
   switch (type) {
@@ -307,7 +301,7 @@ function FilesTab({ sections }: { sections: ProjectFileSection[] }) {
                   <div className="mt-3 flex min-h-40 items-center justify-center rounded-xl border border-dashed border-border bg-background">
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       {getFileIcon(selectedFile.type)}
-                      <p className="text-xs">Preview unavailable in demo mode</p>
+                      <p className="text-xs">Upload files to preview versions here.</p>
                     </div>
                   </div>
                 </section>
@@ -357,8 +351,8 @@ function FilesTab({ sections }: { sections: ProjectFileSection[] }) {
   )
 }
 
-function SharesTab({ projectId }: { projectId: string }) {
-  const shares = projectSharesById[projectId] ?? []
+function SharesTab({ projectId: _projectId }: { projectId: string }) {
+  const shares: ProjectShare[] = []
 
   return (
     <section className="space-y-5">
@@ -436,8 +430,8 @@ function SharesTab({ projectId }: { projectId: string }) {
   )
 }
 
-function ActivityTab({ projectId }: { projectId: string }) {
-  const activity = projectActivityById[projectId] ?? []
+function ActivityTab({ projectId: _projectId }: { projectId: string }) {
+  const activity: ProjectActivity[] = []
 
   return (
     <section className="rounded-2xl border border-border bg-card p-4 md:p-5">
@@ -460,25 +454,17 @@ function ActivityTab({ projectId }: { projectId: string }) {
   )
 }
 
-function ProjectWorkspace({ project }: { project: Project }) {
-  const [searchParams, setSearchParams] = useSearchParams()
+function ProjectWorkspace({
+  project,
+  activeTab,
+  onTabChange,
+}: {
+  project: Project
+  activeTab: ProjectTab
+  onTabChange: (tab: ProjectTab) => void
+}) {
 
-  const currentTab = searchParams.get("tab")
-  const activeTab: ProjectTab = isProjectTab(currentTab) ? currentTab : "files"
-
-  const setActiveTab = (tab: ProjectTab) => {
-    const nextParams = new URLSearchParams(searchParams)
-
-    if (tab === "files") {
-      nextParams.delete("tab")
-    } else {
-      nextParams.set("tab", tab)
-    }
-
-    setSearchParams(nextParams, { replace: true })
-  }
-
-  const sections = projectFilesById[project.id] ?? []
+  const sections: ProjectFileSection[] = []
 
   return (
     <section className="space-y-5">
@@ -515,7 +501,7 @@ function ProjectWorkspace({ project }: { project: Project }) {
             key={tab}
             variant={activeTab === tab ? "secondary" : "ghost"}
             className="capitalize"
-            onClick={() => setActiveTab(tab)}
+            onClick={() => onTabChange(tab)}
           >
             {tab}
           </Button>
@@ -529,7 +515,7 @@ function ProjectWorkspace({ project }: { project: Project }) {
   )
 }
 
-function ProjectsDirectory({ projects }: { projects: Project[] }) {
+function ProjectsDirectory({ projects, workspaceId }: { projects: Project[]; workspaceId: string }) {
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<DirectoryFilter>("active")
   const [view, setView] = useState<DirectoryView>("grid")
@@ -609,7 +595,7 @@ function ProjectsDirectory({ projects }: { projects: Project[] }) {
           {filteredProjects.map((project) => (
             <Link
               key={project.id}
-              to={`/projects/${project.id}`}
+              to={appPaths.workspaceProjectSection(workspaceId, project.id, "files")}
               className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/40"
             >
               <div className="flex items-start justify-between gap-2">
@@ -648,7 +634,7 @@ function ProjectsDirectory({ projects }: { projects: Project[] }) {
           {filteredProjects.map((project) => (
             <Link
               key={project.id}
-              to={`/projects/${project.id}`}
+              to={appPaths.workspaceProjectSection(workspaceId, project.id, "files")}
               className="grid gap-2 border-b border-border/70 px-4 py-3 transition-colors hover:bg-muted/30 last:border-b-0 md:grid-cols-[minmax(0,1.6fr)_0.8fr_0.8fr_1fr_1fr] md:items-center"
             >
               <div className="min-w-0">
@@ -667,10 +653,25 @@ function ProjectsDirectory({ projects }: { projects: Project[] }) {
   )
 }
 
-export function ProjectsPage() {
-  const { projectId } = useParams()
+type ProjectsPageProps = {
+  projectTab?: ProjectTab
+}
+
+export function ProjectsPage({ projectTab }: ProjectsPageProps) {
+  const navigate = useNavigate()
+  const { workspaceId = "", projectId } = useParams()
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
-  const { data: projects = [], isLoading } = useProjectsQuery(activeWorkspaceId)
+  const currentWorkspaceId = workspaceId || activeWorkspaceId || ""
+
+  const { data: projects = [], isLoading } = useProjectsQuery(currentWorkspaceId)
+
+  if (!currentWorkspaceId) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        Loading workspace context...
+      </section>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -681,7 +682,7 @@ export function ProjectsPage() {
   }
 
   if (!projectId) {
-    return <ProjectsDirectory projects={projects} />
+    return <ProjectsDirectory projects={projects} workspaceId={currentWorkspaceId} />
   }
 
   const selectedProject = projects.find((project) => project.id === projectId)
@@ -696,12 +697,18 @@ export function ProjectsPage() {
             Try selecting a different workspace from the sidebar or open the full project directory.
           </p>
           <Button asChild>
-            <Link to="/projects">Open All Projects</Link>
+            <Link to={appPaths.workspaceProjects(currentWorkspaceId)}>Open All Projects</Link>
           </Button>
         </div>
       </section>
     )
   }
 
-  return <ProjectWorkspace project={selectedProject} />
+  const activeTab = projectTab ?? "files"
+
+  const handleTabChange = (tab: ProjectTab) => {
+    navigate(appPaths.workspaceProjectSection(currentWorkspaceId, selectedProject.id, tab))
+  }
+
+  return <ProjectWorkspace project={selectedProject} activeTab={activeTab} onTabChange={handleTabChange} />
 }

@@ -10,6 +10,8 @@ export type AuthUser = {
 
 export type LastUsedWorkspace = {
   id: string
+  name: string
+  plan: "Free" | "Pro" | "Team"
   roleId: string | null
   accessId: string | null
 }
@@ -26,6 +28,7 @@ export type LoginRequest = {
 
 export type LoginResponse = {
   user: AuthUser
+  lastUsedWorkspace: LastUsedWorkspace | null
   token?: string
 }
 
