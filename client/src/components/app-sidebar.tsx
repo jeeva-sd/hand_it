@@ -2,7 +2,6 @@ import * as React from "react"
 
 import { appPaths } from "@/app/router/paths"
 import { NavUser } from "@/components/nav-user"
-import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   DropdownMenu,
@@ -17,16 +16,18 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarRail,
-  SidebarSeparator,
 } from "@/components/ui/sidebar"
 import {
   ChevronDownIcon,
+  ChevronRightIcon,
   Clock3Icon,
   CreditCardIcon,
   FolderIcon,
@@ -83,18 +84,22 @@ export function AppSidebar({
 }) {
   const location = useLocation()
 
-  const activeWorkspace =
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0]
+  const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+  const workspaceScopeId = activeWorkspace?.id || activeWorkspaceId || ""
 
-  const workspaceProjectsPath = activeWorkspace ? appPaths.workspaceProjects(activeWorkspace.id) : "/projects"
-  const workspaceMembersPath = activeWorkspace ? appPaths.workspaceMembers(activeWorkspace.id) : "/settings/members"
-  const workspaceBillingPath = activeWorkspace ? appPaths.workspaceBilling(activeWorkspace.id) : "/settings/billing"
-  const workspaceSettingsPath = activeWorkspace ? appPaths.workspaceSettings(activeWorkspace.id) : "/settings"
+  const workspaceProjectsPath = workspaceScopeId ? appPaths.workspaceProjects(workspaceScopeId) : "/projects"
+  const workspaceMembersPath = workspaceScopeId ? appPaths.workspaceMembers(workspaceScopeId) : "/settings/members"
+  const workspaceBillingPath = workspaceScopeId ? appPaths.workspaceBilling(workspaceScopeId) : "/settings/billing"
+  const workspaceSettingsPath = workspaceScopeId ? appPaths.workspaceSettings(workspaceScopeId) : "/settings"
 
   const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "--"
   const isWorkspaceSettingsActive = /^\/w\/[^/]+\/settings(\/|$)/.test(location.pathname)
-  const [workspaceSettingsOpenByUser, setWorkspaceSettingsOpenByUser] = React.useState(false)
-  const isWorkspaceSettingsOpen = isWorkspaceSettingsActive || workspaceSettingsOpenByUser
+  const isWorkspaceProjectsActive =
+    location.pathname === workspaceProjectsPath || location.pathname.startsWith(`${workspaceProjectsPath}/`)
+  const hasActiveFavorite = favorites.some((project) => isProjectLinkActive(location.pathname, project.url))
+  const hasActiveRecentProject = recentProjects.some((project) =>
+    isProjectLinkActive(location.pathname, project.url)
+  )
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -146,111 +151,125 @@ export function AppSidebar({
 
       <SidebarContent className="gap-1 px-1 py-2">
         <SidebarGroup>
-          <SidebarGroupLabel className="gap-2">
-            <StarIcon className="size-3.5" />
-            Favorites
-          </SidebarGroupLabel>
           <SidebarMenu>
-            {favorites.map((project) => (
-              <SidebarMenuItem key={project.id}>
-                <SidebarMenuButton asChild isActive={isProjectLinkActive(location.pathname, project.url)}>
-                  <Link to={project.url}>
-                    <StarIcon className="size-3.5" />
-                    <span>{project.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            {favorites.length === 0 && (
+            <Collapsible defaultOpen className="group/collapsible">
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground/60" disabled>
-                  <span>No favorites yet</span>
-                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton isActive={hasActiveFavorite}>
+                    <StarIcon className="size-4" />
+                    <span>Favorites</span>
+                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {favorites.map((project) => (
+                      <SidebarMenuSubItem key={project.id}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isProjectLinkActive(location.pathname, project.url)}
+                        >
+                          <Link to={project.url}>
+                            <span>{project.name}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                    {favorites.length === 0 && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton aria-disabled="true" className="text-sidebar-foreground/60">
+                          <span>No favorites yet</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    )}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
               </SidebarMenuItem>
-            )}
-          </SidebarMenu>
-        </SidebarGroup>
+            </Collapsible>
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="gap-2">
-            <Clock3Icon className="size-3.5" />
-            Recent Projects
-          </SidebarGroupLabel>
-          <SidebarMenu>
-            {recentProjects.map((project) => (
-              <SidebarMenuItem key={project.id}>
-                <SidebarMenuButton asChild isActive={isProjectLinkActive(location.pathname, project.url)}>
-                  <Link to={project.url}>
-                    <span>{project.name}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-            {recentProjects.length === 0 && (
+            <Collapsible defaultOpen className="group/collapsible">
               <SidebarMenuItem>
-                <SidebarMenuButton className="text-sidebar-foreground/60" disabled>
-                  <span>No recent projects</span>
-                </SidebarMenuButton>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton isActive={hasActiveRecentProject || isWorkspaceProjectsActive}>
+                    <Clock3Icon className="size-4" />
+                    <span>Recent Projects</span>
+                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {recentProjects.map((project) => (
+                      <SidebarMenuSubItem key={project.id}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={isProjectLinkActive(location.pathname, project.url)}
+                        >
+                          <Link to={project.url}>
+                            <span>{project.name}</span>
+                          </Link>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                    {recentProjects.length === 0 && (
+                      <SidebarMenuSubItem>
+                        <SidebarMenuSubButton aria-disabled="true" className="text-sidebar-foreground/60">
+                          <span>No recent projects</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    )}
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceProjectsPath}>
+                        <Link to={workspaceProjectsPath}>
+                          <FolderIcon className="size-4" />
+                          <span>All Projects</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </CollapsibleContent>
               </SidebarMenuItem>
-            )}
-            <SidebarMenuItem className="mt-1">
-              <Button asChild variant="ghost" className="h-8 w-full justify-start rounded-md px-2 text-sm">
-                <Link to={workspaceProjectsPath}>
-                  <PlusIcon className="size-4" />
-                  New Project
-                </Link>
-              </Button>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={location.pathname === workspaceProjectsPath}>
-                <Link to={workspaceProjectsPath}>
-                  <FolderIcon className="size-4" />
-                  <span>All Projects</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            </Collapsible>
+
+            <Collapsible defaultOpen className="group/collapsible">
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton isActive={isWorkspaceSettingsActive}>
+                    <SettingsIcon className="size-4" />
+                    <span>Settings</span>
+                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceSettingsPath}>
+                        <Link to={workspaceSettingsPath}>
+                          <SettingsIcon className="size-4" />
+                          <span>General</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceMembersPath}>
+                        <Link to={workspaceMembersPath}>
+                          <UsersIcon className="size-4" />
+                          <span>Members</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                    <SidebarMenuSubItem>
+                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceBillingPath}>
+                        <Link to={workspaceBillingPath}>
+                          <CreditCardIcon className="size-4" />
+                          <span>Billing</span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
           </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <Collapsible open={isWorkspaceSettingsOpen} onOpenChange={setWorkspaceSettingsOpenByUser}>
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-2 hover:bg-sidebar-accent/50">
-                <span>Workspace</span>
-                <ChevronDownIcon className={`size-4 transition-transform ${isWorkspaceSettingsOpen ? "rotate-180" : ""}`} />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.pathname === workspaceMembersPath}>
-                    <Link to={workspaceMembersPath}>
-                      <UsersIcon className="size-4" />
-                      <span>Members</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.pathname === workspaceBillingPath}>
-                    <Link to={workspaceBillingPath}>
-                      <CreditCardIcon className="size-4" />
-                      <span>Billing</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={location.pathname === workspaceSettingsPath}>
-                    <Link to={workspaceSettingsPath}>
-                      <SettingsIcon className="size-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </CollapsibleContent>
-          </Collapsible>
         </SidebarGroup>
       </SidebarContent>
 

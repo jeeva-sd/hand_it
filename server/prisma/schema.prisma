@@ -47,14 +47,17 @@ model User {
   email                String            @unique(map: "uk_user_email") @db.VarChar(255)
   passwordHash         String?           @db.VarChar(255)
   status               UserStatus?       @default(PENDING)
+  lastUsedWorkspaceId  String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   authTokens           AuthToken[]
   createdWorkspaces    Workspace[]       @relation("workspace_creator")
+  lastUsedWorkspace    Workspace?        @relation("workspace_last_used_by_users", fields: [lastUsedWorkspaceId], references: [id], onDelete: SetNull)
   workspaceMemberships WorkspaceMember[]
 
   @@index([fname], map: "idx_user_fname")
   @@index([lname], map: "idx_user_lname")
+  @@index([lastUsedWorkspaceId], map: "idx_user_last_used_workspace")
   @@map("users")
 }
 
@@ -84,6 +87,7 @@ model Workspace {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   createdByUser     User              @relation("workspace_creator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  lastUsedByUsers   User[]            @relation("workspace_last_used_by_users")
   members           WorkspaceMember[]
   projects          Project[]
 

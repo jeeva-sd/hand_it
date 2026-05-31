@@ -15,9 +15,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
+import { useProjectQuery } from "@/features/project/use-project-query"
 import { useProjectsQuery } from "@/features/project/use-projects-query"
+import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { cn } from "@/lib/utils"
-import { useWorkspaceStore } from "@/stores/workspace.store"
+import { ApiError } from "@/services/http.service"
 import type {
   ActivityType,
   Project,
@@ -49,7 +51,7 @@ import {
   UploadIcon,
   VideoIcon,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link, useNavigate, useParams } from "react-router-dom"
 
 type DirectoryFilter = "active" | "archived" | "favorites"
@@ -659,47 +661,106 @@ type ProjectsPageProps = {
 
 export function ProjectsPage({ projectTab }: ProjectsPageProps) {
   const navigate = useNavigate()
-  const { workspaceId = "", projectId } = useParams()
-  const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
-  const currentWorkspaceId = workspaceId || activeWorkspaceId || ""
+  const { workspaceId = "", projectId = "" } = useParams()
 
-  const { data: projects = [], isLoading } = useProjectsQuery(currentWorkspaceId)
+  const hasProjectRoute = projectId.length > 0
+  const workspaceQuery = useWorkspaceQuery(workspaceId)
 
-  if (!currentWorkspaceId) {
+  const isWorkspaceReady = workspaceQuery.isSuccess
+  const projectsQuery = useProjectsQuery(workspaceId, !hasProjectRoute && isWorkspaceReady)
+  const projectQuery = useProjectQuery(workspaceId, hasProjectRoute ? projectId : "", hasProjectRoute && isWorkspaceReady)
+  const isProjectNotFound =
+    hasProjectRoute && projectQuery.isError && projectQuery.error instanceof ApiError && projectQuery.error.status === 404
+
+  useEffect(() => {
+    if (!hasProjectRoute || !isProjectNotFound || !workspaceId) {
+      return
+    }
+
+    navigate(appPaths.workspaceProjects(workspaceId), { replace: true })
+  }, [hasProjectRoute, isProjectNotFound, navigate, workspaceId])
+
+  if (!workspaceId) {
     return (
       <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-        Loading workspace context...
+        Workspace route is missing. Please open a workspace URL.
       </section>
     )
   }
 
-  if (isLoading) {
+  if (workspaceQuery.isLoading) {
     return (
       <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
-        Loading projects...
+        Loading workspace...
       </section>
     )
   }
 
-  if (!projectId) {
-    return <ProjectsDirectory projects={projects} workspaceId={currentWorkspaceId} />
+  if (workspaceQuery.isError || !workspaceQuery.data) {
+    return (
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center text-sm text-red-700">
+        Unable to load this workspace from URL right now. Please refresh and try again.
+      </section>
+    )
   }
 
-  const selectedProject = projects.find((project) => project.id === projectId)
+  if (!hasProjectRoute) {
+    if (projectsQuery.isLoading) {
+      return (
+        <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+          Loading projects...
+        </section>
+      )
+    }
 
-  if (!selectedProject) {
+    if (projectsQuery.isError) {
+      return (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center text-sm text-red-700">
+          Unable to load projects for this workspace right now. Please refresh and try again.
+        </section>
+      )
+    }
+
+    return <ProjectsDirectory projects={projectsQuery.data ?? []} workspaceId={workspaceId} />
+  }
+
+  if (projectQuery.isLoading) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        Loading project...
+      </section>
+    )
+  }
+
+  if (isProjectNotFound) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        Project not found in this workspace. Redirecting to projects...
+      </section>
+    )
+  }
+
+  if (projectQuery.isError) {
     return (
       <section className="rounded-2xl border border-dashed border-border p-10 text-center">
         <div className="mx-auto flex max-w-md flex-col items-center gap-3">
           <CheckCircle2Icon className="size-8 text-muted-foreground" />
-          <h2 className="text-lg font-medium">Project not found in this workspace</h2>
-          <p className="text-sm text-muted-foreground">
-            Try selecting a different workspace from the sidebar or open the full project directory.
-          </p>
+          <h2 className="text-lg font-medium">Unable to load project</h2>
+          <p className="text-sm text-muted-foreground">Please refresh and try again.</p>
           <Button asChild>
-            <Link to={appPaths.workspaceProjects(currentWorkspaceId)}>Open All Projects</Link>
+            <Link to={appPaths.workspaceProjects(workspaceId)}>Open All Projects</Link>
           </Button>
         </div>
+      </section>
+    )
+  }
+
+  const selectedProject = projectQuery.data
+
+  if (!selectedProject) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+        Loading project...
       </section>
     )
   }
@@ -707,7 +768,7 @@ export function ProjectsPage({ projectTab }: ProjectsPageProps) {
   const activeTab = projectTab ?? "files"
 
   const handleTabChange = (tab: ProjectTab) => {
-    navigate(appPaths.workspaceProjectSection(currentWorkspaceId, selectedProject.id, tab))
+    navigate(appPaths.workspaceProjectSection(workspaceId, selectedProject.id, tab))
   }
 
   return <ProjectWorkspace project={selectedProject} activeTab={activeTab} onTabChange={handleTabChange} />

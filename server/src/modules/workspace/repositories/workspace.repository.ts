@@ -15,7 +15,11 @@ type UpdateWorkspaceData = { workspaceId: string; name: string };
 
 type DeleteWorkspaceData = { workspaceId: string };
 
+type FindWorkspaceProjectData = { workspaceId: string; projectId: string };
+
 type CreateProjectData = { workspaceId: string; name: string; description?: string | null; status?: ProjectStatus };
+
+type UpdateUserLastUsedWorkspaceData = { userId: string; workspaceId: string | null };
 
 const workspaceSelect = {
     id: true,
@@ -148,10 +152,25 @@ export class WorkspaceRepository {
         });
     }
 
+    async updateUserLastUsedWorkspace(data: UpdateUserLastUsedWorkspaceData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).user.update({
+            where: { id: data.userId },
+            data: { lastUsedWorkspaceId: data.workspaceId },
+            select: { id: true }
+        });
+    }
+
     async listProjectsByWorkspace(data: { workspaceId: string }, transaction?: PrismaTransaction) {
         return this.txHandler(transaction).project.findMany({
             where: { workspaceId: data.workspaceId },
             orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
+            select: projectSelect
+        });
+    }
+
+    async findProjectByWorkspace(data: FindWorkspaceProjectData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).project.findFirst({
+            where: { workspaceId: data.workspaceId, id: data.projectId },
             select: projectSelect
         });
     }

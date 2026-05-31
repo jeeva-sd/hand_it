@@ -19,6 +19,8 @@ type UpdateUserPasswordData = { id: string; passwordHash: string; status: UserSt
 
 type UpdateUserStatusData = { id: string; status: UserStatus };
 
+type UpdateUserLastUsedWorkspaceData = { id: string; lastUsedWorkspaceId: string | null };
+
 type MarkAllUserAuthTokensUsedData = { userId: string; usedAt: Date };
 
 type FindMostRecentWorkspaceMembershipByUserData = { userId: string };
@@ -92,6 +94,13 @@ export class AuthRepository {
 
     async updateUserStatus(data: UpdateUserStatusData, transaction?: PrismaTransaction) {
         return this.txHandler(transaction).user.update({ where: { id: data.id }, data: { status: data.status } });
+    }
+
+    async updateUserLastUsedWorkspace(data: UpdateUserLastUsedWorkspaceData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).user.update({
+            where: { id: data.id },
+            data: { lastUsedWorkspaceId: data.lastUsedWorkspaceId }
+        });
     }
 
     async markAllUserAuthTokensUsed(data: MarkAllUserAuthTokensUsedData, transaction?: PrismaTransaction) {

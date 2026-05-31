@@ -6,6 +6,10 @@ type WorkspaceListResponse = {
   workspaces: Workspace[]
 }
 
+type WorkspaceDetailResponse = {
+  workspace: Workspace
+}
+
 type CreateWorkspaceRequest = {
   name: string
 }
@@ -22,12 +26,20 @@ type UpdateWorkspaceResponse = {
   workspace: Workspace
 }
 
+type SelectWorkspaceResponse = {
+  workspace: Workspace
+}
+
 type DeleteWorkspaceResponse = {
   message: string
 }
 
 type ProjectsListResponse = {
   projects: Project[]
+}
+
+type ProjectDetailResponse = {
+  project: Project
 }
 
 type MembersListResponse = {
@@ -54,6 +66,14 @@ export async function listWorkspaces(): Promise<Workspace[]> {
   })
 
   return response.workspaces
+}
+
+export async function getWorkspace(workspaceId: string): Promise<Workspace> {
+  const response = await apiRequest<WorkspaceDetailResponse>(`/workspaces/${workspaceId}`, {
+    method: "GET",
+  })
+
+  return response.workspace
 }
 
 export async function createWorkspace(payload: CreateWorkspaceRequest): Promise<Workspace> {
@@ -97,4 +117,23 @@ export async function getProjectsByWorkspace(workspaceId: string): Promise<Proje
     ...project,
     updatedAt: formatProjectUpdatedAt(project.updatedAt),
   }))
+}
+
+export async function getWorkspaceProject(workspaceId: string, projectId: string): Promise<Project> {
+  const response = await apiRequest<ProjectDetailResponse>(`/workspaces/${workspaceId}/projects/${projectId}`, {
+    method: "GET",
+  })
+
+  return {
+    ...response.project,
+    updatedAt: formatProjectUpdatedAt(response.project.updatedAt),
+  }
+}
+
+export async function selectWorkspace(workspaceId: string): Promise<Workspace> {
+  const response = await apiRequest<SelectWorkspaceResponse>(`/workspaces/${workspaceId}/select`, {
+    method: "PATCH",
+  })
+
+  return response.workspace
 }

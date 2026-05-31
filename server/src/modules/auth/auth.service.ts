@@ -146,7 +146,7 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
-        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user);
 
         return { token, user: this.mapUser(user), lastUsedWorkspace };
     }
@@ -161,7 +161,7 @@ export class AuthService {
             throw new UnauthorizedException('Unauthorized');
         }
 
-        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(tokenData, user.id);
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(tokenData, user);
 
         return { user: this.mapUser(user), lastUsedWorkspace };
     }
@@ -207,7 +207,7 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
-        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user);
 
         return { token, user: this.mapUser(user), lastUsedWorkspace };
     }
@@ -312,7 +312,7 @@ export class AuthService {
         }
 
         const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
-        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user.id);
+        const lastUsedWorkspace = await this.resolveLastUsedWorkspace(undefined, user);
         const redirectUrl = this.buildClientRedirectUrl('/');
 
         return {
@@ -357,8 +357,9 @@ export class AuthService {
 
     private async resolveLastUsedWorkspace(
         tokenData: TokenData | undefined,
-        userId: string
+        user: Pick<User, 'id' | 'lastUsedWorkspaceId'>
     ): Promise<LastUsedWorkspaceResponse | null> {
+        const userId = user.id;
         const tokenWorkspaceId = tokenData?.workspaceId?.trim();
 
         if (tokenWorkspaceId) {
@@ -368,6 +369,13 @@ export class AuthService {
             });
 
             if (tokenMembership) {
+                if (user.lastUsedWorkspaceId !== tokenMembership.workspace.id) {
+                    await this.authRepository.updateUserLastUsedWorkspace({
+                        id: userId,
+                        lastUsedWorkspaceId: tokenMembership.workspace.id
+                    });
+                }
+
                 return {
                     id: tokenMembership.workspace.id,
                     name: tokenMembership.workspace.name,
@@ -378,11 +386,37 @@ export class AuthService {
             }
         }
 
+        const persistedWorkspaceId = user.lastUsedWorkspaceId?.trim();
+
+        if (persistedWorkspaceId) {
+            const persistedMembership = await this.authRepository.findWorkspaceMembershipByUserAndWorkspace({
+                userId,
+                workspaceId: persistedWorkspaceId
+            });
+
+            if (persistedMembership) {
+                return {
+                    id: persistedMembership.workspace.id,
+                    name: persistedMembership.workspace.name,
+                    plan: this.mapWorkspacePlan(persistedMembership.workspace.plan),
+                    roleId: persistedMembership.role,
+                    accessId: null
+                };
+            }
+
+            await this.authRepository.updateUserLastUsedWorkspace({ id: userId, lastUsedWorkspaceId: null });
+        }
+
         const membership = await this.authRepository.findMostRecentWorkspaceMembershipByUser({ userId });
 
         if (!membership) {
             return null;
         }
+
+        await this.authRepository.updateUserLastUsedWorkspace({
+            id: userId,
+            lastUsedWorkspaceId: membership.workspace.id
+        });
 
         return {
             id: membership.workspace.id,

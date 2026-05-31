@@ -12,7 +12,9 @@ export function useResolvedWorkspaceId() {
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const setWorkspaces = useWorkspaceStore((state) => state.setWorkspaces)
 
-  const { data: fetchedWorkspaces, isPending } = useWorkspacesQuery(authStatus === "authenticated")
+  const { data: fetchedWorkspaces, isError, isFetched, isPending } = useWorkspacesQuery(
+    authStatus === "authenticated"
+  )
 
   useEffect(() => {
     if (!fetchedWorkspaces) {
@@ -23,16 +25,12 @@ export function useResolvedWorkspaceId() {
   }, [fetchedWorkspaces, setWorkspaces])
 
   const resolvedWorkspaceId = useMemo(() => {
-    if (workspaces.length === 0) {
-      return ""
-    }
-
-    if (activeWorkspaceId && workspaces.some((workspace) => workspace.id === activeWorkspaceId)) {
-      return activeWorkspaceId
-    }
-
-    if (lastUsedWorkspace?.id && workspaces.some((workspace) => workspace.id === lastUsedWorkspace.id)) {
+    if (lastUsedWorkspace?.id && (workspaces.length === 0 || workspaces.some((workspace) => workspace.id === lastUsedWorkspace.id))) {
       return lastUsedWorkspace.id
+    }
+
+    if (activeWorkspaceId && (workspaces.length === 0 || workspaces.some((workspace) => workspace.id === activeWorkspaceId))) {
+      return activeWorkspaceId
     }
 
     return workspaces[0]?.id ?? ""
@@ -40,6 +38,8 @@ export function useResolvedWorkspaceId() {
 
   return {
     isHydrating: isPending && workspaces.length === 0,
+    hasFetchedWorkspaceList: isFetched,
+    isWorkspaceListError: isError,
     resolvedWorkspaceId,
     workspaces,
   }

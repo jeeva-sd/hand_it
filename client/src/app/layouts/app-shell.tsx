@@ -2,7 +2,9 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { appPaths, resolveWorkspaceSwitchPath } from "@/app/router/paths"
 import { useProjectsQuery } from "@/features/project/use-projects-query"
+import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { logoutSession } from "@/services/auth.service"
+import { selectWorkspace } from "@/services/workspace.service"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
 import { useMemo } from "react"
@@ -37,17 +39,13 @@ export function AppShellLayout() {
   const clearSession = useAuthStore((state) => state.clearSession)
 
   const workspaces = useWorkspaceStore((state) => state.workspaces)
-  const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const setActiveWorkspace = useWorkspaceStore((state) => state.setActiveWorkspace)
 
-  const activeWorkspace =
-    workspaces.find((workspace) => workspace.id === workspaceId) ??
-    workspaces.find((workspace) => workspace.id === activeWorkspaceId) ??
-    workspaces[0]
+  const currentWorkspaceId = workspaceId
+  const workspaceQuery = useWorkspaceQuery(currentWorkspaceId)
+  const activeWorkspace = workspaceQuery.data ?? workspaces.find((workspace) => workspace.id === workspaceId)
 
-  const currentWorkspaceId = workspaceId || activeWorkspace?.id || lastUsedWorkspace?.id || ""
-
-  const { data: projects = [] } = useProjectsQuery(currentWorkspaceId)
+  const { data: projects = [] } = useProjectsQuery(currentWorkspaceId, workspaceQuery.isSuccess)
 
   const favorites = useMemo(() => {
     if (!currentWorkspaceId) {
@@ -122,14 +120,14 @@ export function AppShellLayout() {
     navigate(appPaths.createWorkspace)
   }
 
-  const handleWorkspaceChange = (workspaceId: string) => {
-    if (workspaceId === currentWorkspaceId) {
+  const handleWorkspaceChange = (nextWorkspaceId: string) => {
+    if (nextWorkspaceId === currentWorkspaceId) {
       return
     }
 
-    setActiveWorkspace(workspaceId)
+    setActiveWorkspace(nextWorkspaceId)
 
-    const selectedWorkspace = workspaces.find((workspace) => workspace.id === workspaceId)
+    const selectedWorkspace = workspaces.find((workspace) => workspace.id === nextWorkspaceId)
 
     if (!selectedWorkspace) {
       return
@@ -143,7 +141,9 @@ export function AppShellLayout() {
       accessId: lastUsedWorkspace?.accessId ?? null,
     })
 
-    const nextPath = resolveWorkspaceSwitchPath(location.pathname, workspaceId)
+    void selectWorkspace(nextWorkspaceId).catch(() => undefined)
+
+    const nextPath = resolveWorkspaceSwitchPath(location.pathname, nextWorkspaceId)
     navigate(`${nextPath}${location.search}${location.hash}`, { replace: true })
   }
 

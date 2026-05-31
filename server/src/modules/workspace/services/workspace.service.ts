@@ -3,6 +3,7 @@ import {
     ForbiddenException,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
     UnauthorizedException
 } from '@nestjs/common';
 import { ProjectStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
@@ -14,7 +15,12 @@ import {
     WorkspaceRepository,
     WorkspaceWithMemberCount
 } from '../repositories/workspace.repository';
-import { CreateWorkspacePayload, UpdateWorkspacePayload, WorkspacePathPayload } from '../schemas';
+import {
+    CreateWorkspacePayload,
+    UpdateWorkspacePayload,
+    WorkspacePathPayload,
+    WorkspaceProjectPathPayload
+} from '../schemas';
 
 const FREE_WORKSPACE_STORAGE_LIMIT_BYTES = BigInt(2 * 1024 * 1024 * 1024);
 const WORKSPACE_LIST_CACHE_TTL_SECONDS = 60;
@@ -114,6 +120,8 @@ export class WorkspaceService {
                 tx
             );
 
+            await this.workspaceRepository.updateUserLastUsedWorkspace({ userId, workspaceId: workspace.id }, tx);
+
             const workspaceForUser = await this.workspaceRepository.findWorkspaceByIdForUser(
                 { workspaceId: workspace.id, userId },
                 tx
@@ -138,6 +146,25 @@ export class WorkspaceService {
         return { workspace };
     }
 
+    async selectWorkspace(payload: WorkspacePathPayload, tokenData?: TokenData) {
+        const userId = this.requireUserId(tokenData);
+        const workspaceId = payload.workspaceId;
+
+        const workspaceForUser = await this.workspaceRepository.findWorkspaceByIdForUser({ workspaceId, userId });
+
+        if (!workspaceForUser) {
+            throw new ForbiddenException('You do not have access to this workspace');
+        }
+
+        await this.workspaceRepository.updateUserLastUsedWorkspace({ userId, workspaceId });
+
+        const workspace = this.mapWorkspace(workspaceForUser.workspace, workspaceForUser.role);
+
+        this.cacheService.set(this.workspaceDetailCacheKey(workspaceId, userId), workspace, WORKSPACE_DETAIL_CACHE_TTL_SECONDS);
+
+        return { workspace };
+    }
+
     async listProjects(payload: WorkspacePathPayload, tokenData?: TokenData) {
         const userId = this.requireUserId(tokenData);
 
@@ -153,6 +180,30 @@ export class WorkspaceService {
         const projects = await this.workspaceRepository.listProjectsByWorkspace({ workspaceId: payload.workspaceId });
 
         return { projects: projects.map(project => this.mapProject(project)) };
+    }
+
+    async getProject(payload: WorkspaceProjectPathPayload, tokenData?: TokenData) {
+        const userId = this.requireUserId(tokenData);
+
+        const membership = await this.workspaceRepository.findWorkspaceMembership({
+            workspaceId: payload.workspaceId,
+            userId
+        });
+
+        if (!membership) {
+            throw new ForbiddenException('You do not have access to this workspace');
+        }
+
+        const project = await this.workspaceRepository.findProjectByWorkspace({
+            workspaceId: payload.workspaceId,
+            projectId: payload.projectId
+        });
+
+        if (!project) {
+            throw new NotFoundException('Project not found in this workspace');
+        }
+
+        return { project: this.mapProject(project) };
     }
 
     async listMembers(payload: WorkspacePathPayload, tokenData?: TokenData) {
