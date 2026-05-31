@@ -160,7 +160,11 @@ export class WorkspaceService {
 
         const workspace = this.mapWorkspace(workspaceForUser.workspace, workspaceForUser.role);
 
-        this.cacheService.set(this.workspaceDetailCacheKey(workspaceId, userId), workspace, WORKSPACE_DETAIL_CACHE_TTL_SECONDS);
+        this.cacheService.set(
+            this.workspaceDetailCacheKey(workspaceId, userId),
+            workspace,
+            WORKSPACE_DETAIL_CACHE_TTL_SECONDS
+        );
 
         return { workspace };
     }

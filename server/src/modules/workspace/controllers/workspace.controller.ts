@@ -8,8 +8,8 @@ import {
     UpdateWorkspacePayload,
     updateWorkspaceSchema,
     WorkspacePathPayload,
-    workspacePathSchema,
     WorkspaceProjectPathPayload,
+    workspacePathSchema,
     workspaceProjectPathSchema
 } from '../schemas';
 import { WorkspaceService } from '../services/workspace.service';
