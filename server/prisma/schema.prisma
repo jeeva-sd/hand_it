@@ -20,16 +20,31 @@ enum UserStatus {
   DELETED
 }
 
+enum WorkspacePlan {
+  FREE
+  PRO
+  TEAM
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
 model User {
-  id           String      @id @default(cuid())
-  fname        String      @db.VarChar(50)
-  lname        String      @db.VarChar(50)
-  email        String      @unique(map: "uk_user_email") @db.VarChar(255)
-  passwordHash String?     @db.VarChar(255)
-  status       UserStatus? @default(PENDING)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  authTokens   AuthToken[]
+  id                   String            @id @default(cuid())
+  fname                String            @db.VarChar(50)
+  lname                String            @db.VarChar(50)
+  email                String            @unique(map: "uk_user_email") @db.VarChar(255)
+  passwordHash         String?           @db.VarChar(255)
+  status               UserStatus?       @default(PENDING)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  authTokens           AuthToken[]
+  createdWorkspaces    Workspace[]       @relation("workspace_creator")
+  workspaceMemberships WorkspaceMember[]
 
   @@index([fname], map: "idx_user_fname")
   @@index([lname], map: "idx_user_lname")
@@ -50,4 +65,38 @@ model AuthToken {
   @@index([userId, type], map: "idx_auth_token_user_type")
   @@index([expiresAt], map: "idx_auth_token_expires_at")
   @@map("auth_tokens")
+}
+
+model Workspace {
+  id                String            @id @default(cuid())
+  name              String            @db.VarChar(120)
+  plan              WorkspacePlan     @default(FREE)
+  storageLimitBytes BigInt            @default(2147483648) @db.UnsignedBigInt
+  storageUsedBytes  BigInt            @default(0) @db.UnsignedBigInt
+  createdByUserId   String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  createdByUser     User              @relation("workspace_creator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  members           WorkspaceMember[]
+
+  @@index([createdByUserId], map: "idx_workspace_created_by")
+  @@index([plan], map: "idx_workspace_plan")
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole @default(MEMBER)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId], map: "uk_workspace_member_workspace_user")
+  @@index([userId], map: "idx_workspace_member_user")
+  @@index([workspaceId, role], map: "idx_workspace_member_workspace_role")
+  @@map("workspace_members")
 }
