@@ -17,6 +17,8 @@ type ConsumeAuthTokenData = { id: string; usedAt: Date };
 
 type UpdateUserPasswordData = { id: string; passwordHash: string; status: number };
 
+type UpdateUserStatusData = { id: string; status: number };
+
 type MarkAllUserAuthTokensUsedData = { userId: string; usedAt: Date };
 
 @Injectable()
@@ -79,6 +81,13 @@ export class AuthRepository {
         return this.txHandler(transaction).user.update({
             where: { id: data.id },
             data: { passwordHash: data.passwordHash, status: data.status }
+        });
+    }
+
+    async updateUserStatus(data: UpdateUserStatusData, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).user.update({
+            where: { id: data.id },
+            data: { status: data.status }
         });
     }
 

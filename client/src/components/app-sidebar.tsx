@@ -55,6 +55,7 @@ type SidebarUser = {
 
 export function AppSidebar({
   user,
+  onSignOut,
   workspaces,
   activeWorkspaceId,
   onWorkspaceChange,
@@ -63,6 +64,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   user: SidebarUser
+  onSignOut: () => void
   workspaces: WorkspaceItem[]
   activeWorkspaceId: string
   onWorkspaceChange: (workspaceId: string) => void
@@ -219,7 +221,7 @@ export function AppSidebar({
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border/70 p-3">
-        <NavUser user={user} />
+        <NavUser user={user} onSignOut={onSignOut} />
       </SidebarFooter>
 
       <SidebarRail />

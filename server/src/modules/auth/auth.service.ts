@@ -53,6 +53,18 @@ type AuthPageModel = {
     invalidReason?: string;
 };
 
+type GoogleTokenResponse = {
+    access_token?: string;
+};
+
+type GoogleProfileResponse = {
+    email?: string;
+    email_verified?: boolean;
+    given_name?: string;
+    family_name?: string;
+    name?: string;
+};
+
 @Injectable()
 export class AuthService {
     constructor(
@@ -61,6 +73,79 @@ export class AuthService {
         private readonly emailsService: EmailsService,
         @Inject(appConfig.auth.basicJWT.name) private readonly jwtService: JwtService
     ) {}
+
+    getGoogleAuthorizationUrl(): string {
+        this.assertGoogleAuthEnabled();
+
+        const params = new URLSearchParams({
+            client_id: appConfig.auth.google.clientId,
+            redirect_uri: appConfig.auth.google.redirectUri,
+            response_type: 'code',
+            scope: appConfig.auth.google.scopes.join(' '),
+            access_type: 'online',
+            include_granted_scopes: 'true',
+            prompt: 'select_account'
+        });
+
+        return `${appConfig.auth.google.authorizationUrl}?${params.toString()}`;
+    }
+
+    getGoogleSuccessRedirectUrl(): string {
+        return this.buildClientRedirectUrl(appConfig.auth.google.successRedirectPath);
+    }
+
+    getGoogleFailureRedirectUrl(): string {
+        return this.buildClientRedirectUrl(appConfig.auth.google.failureRedirectPath);
+    }
+
+    async loginWithGoogleCode(code: string) {
+        this.assertGoogleAuthEnabled();
+
+        const trimmedCode = code.trim();
+        if (!trimmedCode) {
+            throw new BadRequestException('Missing Google authorization code');
+        }
+
+        const accessToken = await this.exchangeGoogleCodeForAccessToken(trimmedCode);
+        const profile = await this.fetchGoogleProfile(accessToken);
+
+        const email = profile.email?.toLowerCase().trim();
+        if (!email) {
+            throw new UnauthorizedException('Google account email is unavailable');
+        }
+
+        if (profile.email_verified === false) {
+            throw new UnauthorizedException('Google account email is not verified');
+        }
+
+        const names = this.resolveGoogleNames(profile);
+
+        let user = await this.authRepository.findUserByEmail({ email });
+
+        if (!user) {
+            user = await this.authRepository.createUser({
+                fname: names.fname,
+                lname: names.lname,
+                email,
+                status: 1
+            });
+        } else {
+            const fname = user.fname?.trim() || names.fname;
+            const lname = user.lname?.trim() || names.lname;
+
+            if (user.fname !== fname || user.lname !== lname) {
+                user = await this.authRepository.updateUserProfile({ id: user.id, fname, lname });
+            }
+
+            if (user.status !== 1) {
+                user = await this.authRepository.updateUserStatus({ id: user.id, status: 1 });
+            }
+        }
+
+        const token = await this.jwtService.signAsync(this.buildTokenData(user.id));
+
+        return { token, user: this.mapUser(user) };
+    }
 
     async getMe(tokenData?: TokenData) {
         if (!(tokenData?.sub && tokenData.sub.trim())) {
@@ -154,7 +239,19 @@ export class AuthService {
     }
 
     async getResetPasswordPage(token: string): Promise<AuthPageModel> {
-        const authToken = await this.findValidAuthToken(token);
+        const normalizedToken = token.trim();
+
+        if (!normalizedToken) {
+            return {
+                valid: false,
+                title: 'Reset link missing',
+                subtitle: 'The reset link is incomplete.',
+                submitEndpoint: this.buildVersionedApiPath('auth/reset-password'),
+                invalidReason: 'Please open the full reset link from your email and try again.'
+            };
+        }
+
+        const authToken = await this.findValidAuthToken(normalizedToken);
 
         if (!authToken) {
             return {
@@ -175,7 +272,7 @@ export class AuthService {
                 ? 'Set a strong password to activate your account.'
                 : 'Enter a new password for your account.',
             submitEndpoint: this.buildVersionedApiPath('auth/reset-password'),
-            token
+            token: normalizedToken
         };
     }
 
@@ -215,7 +312,7 @@ export class AuthService {
     }
 
     attachAuthCookie(reply: FastifyReply, token: string): void {
-        const cookieName = appConfig.auth.tokenCookieNames[0] ?? 'token';
+        const cookieName = this.getAuthCookieName();
         const maxAge = Number(appConfig.auth.basicJWT.expiresIn);
 
         reply.setCookie(cookieName, token, {
@@ -224,6 +321,16 @@ export class AuthService {
             secure: appConfig.server.mode === 'production',
             path: '/',
             maxAge
+        });
+    }
+
+    clearAuthCookie(reply: FastifyReply): void {
+        const cookieName = this.getAuthCookieName();
+
+        reply.clearCookie(cookieName, {
+            sameSite: 'lax',
+            secure: appConfig.server.mode === 'production',
+            path: '/'
         });
     }
 
@@ -273,6 +380,85 @@ export class AuthService {
         const baseUrl = appConfig.backend.url.replace(/\/+$/, '');
         const path = this.buildVersionedApiPath('auth/reset-password');
         return `${baseUrl}${path}?token=${encodeURIComponent(token)}`;
+    }
+
+    private getAuthCookieName(): string {
+        return appConfig.auth.tokenCookieNames[0] ?? 'handit_auth_token';
+    }
+
+    private buildClientRedirectUrl(path: string): string {
+        const clientUrl = appConfig.client.url.replace(/\/+$/, '');
+        const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+        return `${clientUrl}${normalizedPath}`;
+    }
+
+    private assertGoogleAuthEnabled(): void {
+        if (!appConfig.auth.google.enabled) {
+            throw new BadRequestException('Google sign-in is disabled');
+        }
+    }
+
+    private resolveGoogleNames(profile: GoogleProfileResponse): { fname: string; lname: string } {
+        const givenName = profile.given_name?.trim();
+        const familyName = profile.family_name?.trim();
+
+        if (givenName && familyName) {
+            return { fname: givenName, lname: familyName };
+        }
+
+        const fullName = profile.name?.trim();
+        if (fullName) {
+            const parts = fullName.split(/\s+/);
+            const first = parts.shift() || 'Google';
+            const last = parts.join(' ') || familyName || 'User';
+            return { fname: first, lname: last };
+        }
+
+        return {
+            fname: givenName || 'Google',
+            lname: familyName || 'User'
+        };
+    }
+
+    private async exchangeGoogleCodeForAccessToken(code: string): Promise<string> {
+        const response = await fetch(appConfig.auth.google.tokenUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                code,
+                client_id: appConfig.auth.google.clientId,
+                client_secret: appConfig.auth.google.clientSecret,
+                redirect_uri: appConfig.auth.google.redirectUri,
+                grant_type: 'authorization_code'
+            })
+        });
+
+        const payload = (await response.json().catch(() => null)) as GoogleTokenResponse | null;
+
+        if (!(response.ok && payload?.access_token)) {
+            throw new UnauthorizedException('Unable to authenticate with Google');
+        }
+
+        return payload.access_token;
+    }
+
+    private async fetchGoogleProfile(accessToken: string): Promise<GoogleProfileResponse> {
+        const response = await fetch(appConfig.auth.google.userInfoUrl, {
+            method: 'GET',
+            headers: {
+                Authorization: `Bearer ${accessToken}`
+            }
+        });
+
+        const payload = (await response.json().catch(() => null)) as GoogleProfileResponse | null;
+
+        if (!(response.ok && payload)) {
+            throw new UnauthorizedException('Unable to fetch Google profile');
+        }
+
+        return payload;
     }
 
     private async sendAuthEmail(params: {

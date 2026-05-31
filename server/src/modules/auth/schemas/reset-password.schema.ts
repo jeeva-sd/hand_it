@@ -9,7 +9,11 @@ const passwordSchema = z
     .regex(/[0-9]/, 'Password must include at least one number');
 
 export const resetPasswordSchema = z
-    .object({ token: z.string().trim().min(1), password: passwordSchema, confirmPassword: z.string().min(1) })
+    .object({
+        token: z.string().trim().min(1, 'Token is required.'),
+        password: passwordSchema,
+        confirmPassword: z.string().min(1, 'Confirm password is required')
+    })
     .refine(payload => payload.password === payload.confirmPassword, {
         message: 'Confirm password must match password',
         path: ['confirmPassword']

@@ -5,9 +5,11 @@ import {
   workspaceFavoriteProjectIds,
   workspaceRecentProjectIds,
 } from "@/features/workspace/workspace.data"
+import { logoutSession } from "@/services/auth.service"
+import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
-import { useMemo } from "react"
-import { Outlet, useLocation } from "react-router-dom"
+import { useEffect, useMemo } from "react"
+import { Outlet, useLocation, useNavigate } from "react-router-dom"
 
 function getPageTitle(pathname: string) {
   if (pathname.startsWith("/projects/") && pathname.split("/").length > 2) {
@@ -27,10 +29,23 @@ function getPageTitle(pathname: string) {
 
 export function AppShellLayout() {
   const location = useLocation()
+  const navigate = useNavigate()
+
+  const authUser = useAuthStore((state) => state.user)
+  const lastUsedWorkspace = useAuthStore((state) => state.lastUsedWorkspace)
+  const clearSession = useAuthStore((state) => state.clearSession)
 
   const workspaces = useWorkspaceStore((state) => state.workspaces)
   const activeWorkspaceId = useWorkspaceStore((state) => state.activeWorkspaceId)
   const setActiveWorkspace = useWorkspaceStore((state) => state.setActiveWorkspace)
+
+  useEffect(() => {
+    if (!lastUsedWorkspace?.id) {
+      return
+    }
+
+    setActiveWorkspace(lastUsedWorkspace.id)
+  }, [lastUsedWorkspace?.id, setActiveWorkspace])
 
   const activeWorkspace =
     workspaces.find((workspace) => workspace.id === activeWorkspaceId) ?? workspaces[0]
@@ -74,9 +89,9 @@ export function AppShellLayout() {
   }))
 
   const user = {
-    name: "Sanjay",
-    email: "sanjay@hightool.com",
-    avatar: "/avatars/sanjay.jpg",
+    name: authUser ? `${authUser.fname} ${authUser.lname}`.trim() : "HandIt User",
+    email: authUser?.email ?? "user@handit.app",
+    avatar: "/avatars/user.jpg",
   }
 
   const fallbackWorkspace = {
@@ -100,10 +115,20 @@ export function AppShellLayout() {
 
   const currentWorkspaceId = activeWorkspace?.id ?? fallbackWorkspace.id
 
+  const handleSignOut = () => {
+    void logoutSession()
+      .catch(() => undefined)
+      .finally(() => {
+        clearSession()
+        navigate("/auth/login", { replace: true })
+      })
+  }
+
   return (
     <SidebarProvider defaultOpen>
       <AppSidebar
         user={user}
+        onSignOut={handleSignOut}
         workspaces={layoutWorkspaces}
         activeWorkspaceId={currentWorkspaceId}
         onWorkspaceChange={setActiveWorkspace}

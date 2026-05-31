@@ -51,6 +51,14 @@ export class AuthController {
 
     @SkipJwtAuth()
     @HttpCode(200)
+    @Post('logout')
+    logout(@Res({ passthrough: true }) response: FastifyReply) {
+        this.authService.clearAuthCookie(response);
+        return { message: 'Logged out successfully' };
+    }
+
+    @SkipJwtAuth()
+    @HttpCode(200)
     @Sanitize(forgetPasswordSchema)
     @Post('forget')
     async forgetPassword(@Req() request: RequestX<ForgetPasswordPayload>) {

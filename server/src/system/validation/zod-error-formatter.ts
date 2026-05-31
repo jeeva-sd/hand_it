@@ -73,6 +73,18 @@ const pluralize = (count: number, singular: string, plural = `${singular}s`): st
     return count === 1 ? singular : plural;
 };
 
+const DEFAULT_ZOD_MESSAGE_PATTERNS: RegExp[] = [
+    /^invalid input:?/i,
+    /^too small:/i,
+    /^too big:/i,
+    /^invalid (string|type|enum|date|value|union)/i,
+    /^expected .+?, received /i
+];
+
+const isDefaultZodMessage = (message: string): boolean => {
+    return DEFAULT_ZOD_MESSAGE_PATTERNS.some(pattern => pattern.test(message));
+};
+
 const readAsNumber = (value: unknown): number | null => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : null;
@@ -137,6 +149,12 @@ interface FormatZodIssueOptions {
 export const formatZodIssueMessage = (issue: z.ZodIssue, options: FormatZodIssueOptions = {}): string => {
     const fieldName = humanizePath(issue.path, options.defaultField);
     const issueData = issue as unknown as Record<string, unknown>;
+    const rawIssueMessage = typeof issueData.message === 'string' ? issueData.message.trim() : '';
+
+    if (rawIssueMessage && !isDefaultZodMessage(rawIssueMessage) && !/^invalid input$/i.test(rawIssueMessage)) {
+        return finalizeMessage(rawIssueMessage);
+    }
+
     let message = `${fieldName} has an invalid value`;
 
     switch (issue.code) {
