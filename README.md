@@ -1,844 +1,234 @@
+# hande_it — Product Vision
 
-## Product Vision
-The easiest way for agencies, freelancers, and creative teams to deliver files, collect feedback, manage revisions, and know exactly what clients did
+## Vision
 
-Build a modern collaborative file workspace focused on:
+hande_it is the easiest way for agencies, freelancers, and creative teams to deliver files, manage revisions, collect feedback, and get approvals.
 
-- file delivery
-- sharing
-- versioning
-- collaboration
-- tracking
+Instead of sending endless file versions across email, Slack, WhatsApp, and cloud drives, teams can manage the entire client delivery workflow in one place.
 
-> NOT generic project management.
+Our goal is simple:
 
-The product should feel:
+> Deliver files. Collect feedback. Manage revisions. Get approvals.
 
-- lightweight
-- fast
-- calm
-- professional
-- frictionless
-
-## Core positioning
-
-> “Organize, share, track, and collaborate on files beautifully.”
+Nothing more.
 
 ---
 
-## Product Category
+## The Problem
 
-Position between:
+Creative work is messy after the work is finished.
 
-- [WeTransfer](https://wetransfer.com?utm_source=chatgpt.com)
-- [Dropbox](https://www.dropbox.com?utm_source=chatgpt.com)
-- [DocSend](https://www.docsend.com?utm_source=chatgpt.com)
-- [Frame.io](https://frame.io?utm_source=chatgpt.com)
+Teams constantly deal with:
 
-But:
+* multiple file versions
+* scattered client feedback
+* approval confusion
+* lost deliverables
+* repeated file sharing
+* no visibility into client activity
 
-- simpler
-- lighter
-- more collaboration-focused
-- less enterprise-heavy
+A typical workflow looks like:
+
+* Upload files to Google Drive
+* Send link via email
+* Receive feedback in Slack
+* Receive more feedback in WhatsApp
+* Upload a new version
+* Send another link
+* Repeat
+
+This creates unnecessary friction for both teams and clients.
 
 ---
 
-## Core Product Principles
+## Our Belief
 
-1. File-Centric
+The problem is not file storage.
+
+The problem is client delivery.
+
+Most tools focus on storing files.
+
+Very few tools focus on the workflow that happens after files are shared.
+
+hande_it focuses on that workflow.
+
+---
+
+## Who We Serve
+
+### Primary Audience
+
+* Creative agencies
+* Design agencies
+* Marketing agencies
+* Freelance designers
+* Creative studios
+
+### Secondary Audience
+
+* Internal marketing teams
+* Startups sharing assets
+* Small collaborative teams
+
+We are not building for everyone.
+
+We are building for teams that regularly deliver work to clients.
+
+---
+
+## Core Workflow
+
+### Deliver
+
+Upload files and generate a share link.
+
+### Review
+
+Clients preview files and review deliverables.
+
+### Feedback
+
+Feedback stays attached to the file instead of being scattered across multiple channels.
+
+### Revise
+
+Upload new versions while keeping the same share link.
+
+### Approve
+
+Clients approve deliverables directly within the workflow.
+
+---
+
+## Core Principles
+
+### File-Centric
 
 Everything revolves around files and shares.
 
-NOT tasks/docs/kanban.
+Not tasks.
+
+Not docs.
+
+Not project management.
 
 ---
 
-2. Fast UX
+### Fast
 
-Upload → Share → Collaborate within seconds.
-
----
-
-3. Minimal Cognitive Load
-
-Very shallow hierarchy.
-
-Avoid complexity.
+Uploading, sharing, reviewing, and approving should feel effortless.
 
 ---
 
-4. Trust & Reliability
+### Simple
 
-Critical for file products.
+Minimal hierarchy.
 
-Users must trust:
+Minimal setup.
 
-- uploads
-- storage
-- billing
-- downloads
+Minimal learning curve.
 
 ---
 
-5. Calm Professional UI
+### Professional
 
-Modern utility SaaS aesthetic.
+Designed for client-facing work.
 
----
-
-## Product Hierarchy
-
-### Account
-
-Identity/authentication layer.
-
-Contains:
-
-- owned workspaces
-- invited workspaces
-- personal settings
-
-### Workspace
-
-Collaborative + billing container.
-
-Contains:
-
-- members
-- shares
-- storage quota
-- billing
-- branding
-
-Examples:
-
-- Personal
-- Acme Agency
-- Nike Team
-
-### Share (CORE OBJECT)
-
-Primary workflow entity.
-
-A Share contains:
-
-- files
-- versions
-- public/private links
-- analytics
-- collaboration activity
-
-Examples:
-
-- “Homepage Assets”
-- “Campaign Deliverables”
-- “Logo Package”
-
-### Files
-
-Actual uploaded assets.
-
-Capabilities:
-
-- preview
-- versioning
-- metadata
-- replacement
-
-## Core User Flows
-
-### Upload Flow
-
-Workspace → Create Share → Upload Files → Generate Link → Share
-
-Must feel:
-
-- instant
-- polished
-- reliable
-
-### Collaboration Flow
-
-Invite members → Upload revisions → Track versions → Maintain same share link
-
-### External Client Flow
-
-Open share link → Preview/download → optionally upload reply files later
-
-## Target Audience
-
-### Primary
-
-- freelancers
-- agencies
-- designers
-- creators
-- marketing teams
-
-### Secondary
-
-- startups
-- internal teams
-- lightweight asset collaboration
-
-## MVP Scope
-
-### Authentication
-
-Features:
-
-- email login
-- magic link/OTP
-- Google OAuth later
-
-### Workspace System
-
-Features:
-
-- create workspace
-- workspace switcher
-- invite members
-- member roles
-
-Roles:
-
-- owner
-- admin
-- member
-- viewer
-
-### Shares (MOST IMPORTANT)
-
-Features:
-
-- create share
-- upload files
-- generate share links
-- public/private mode
-- expiry settings
-- password protection
-- download toggle
-
-### File Management
-
-Features:
-
-- drag/drop uploads
-- previews
-- rename/delete
-- replace file
-- file versions
-
-### Versioning
-
-Critical Feature
-
-Users constantly resend:
-
-- final_v2
-- final_final
-- updated_latest
-
-Solve elegantly.
-
-Features:
-
-- upload replacement
-- preserve same link
-- version history
-- rollback later maybe
-
-### Analytics
-
-Track:
-
-- views
-- downloads
-- timestamps
-- geography
-- devices later
-
-Premium value feature.
+Every interaction should feel polished and trustworthy.
 
 ---
 
-### Notifications
+### Transparent
 
-Events:
+Teams should always know:
 
-- file viewed
-- file downloaded
-- upload completed
-- share expired
-- version uploaded
-
----
-
-### Billing & Plans
-
-Billing Philosophy
-
-Plans unlock:
-
-- workflows
-- collaboration
-- premium features
-
-Storage add-ons unlock:
-
-- capacity
+* who viewed a file
+* when it was viewed
+* when it was downloaded
+* when feedback was provided
+* when approval was given
 
 ---
 
-### Workspace-Based Billing
+## What Makes hande_it Different
 
-Subscription attached to workspace.
+Most file-sharing tools stop after delivery.
 
-NOT user.
+hande_it continues through the entire client delivery process.
 
----
+Traditional workflow:
 
-### Pricing Structure
+Upload → Share → Email → Feedback → Re-upload → Email Again
 
-#### Free
+hande_it workflow:
 
-- 1 workspace
-- 2 GB
-- temporary shares
-- limited uploads
+Upload → Share → Feedback → Revision → Approval
 
-#### Pro (~$12/mo)
+One place.
 
-- 100 GB included
-- 3 members
-- unlimited shares
-- version history
-- password protection
-- analytics
-- permanent shares
+One link.
 
-#### Team (~$39/mo)
-
-- 1 TB included
-- more members
-- branding
-- advanced collaboration
+One workflow.
 
 ---
 
-### Storage Add-ons
+## What We Are Not
 
-Example
+hande_it is not:
 
-+100 GB
+* project management software
+* task management software
+* documentation software
+* team chat software
+* cloud storage software
 
-+500 GB
-
-
-Add-ons attach to existing subscription.
-
-
----
-
-Billing Logic
-
-Provider
-
-[Paddle](https://www.paddle.com?utm_source=chatgpt.com)
-
+We are building a client delivery platform.
 
 ---
 
-Workspace Subscription States
+## MVP
 
-free
+The MVP should prove one thing:
 
-active
+Can agencies manage client deliveries more efficiently using hande_it?
 
-past_due
+### Essential Features
 
-restricted
+* Workspaces
+* Shares
+* File uploads
+* File previews
+* Version history
+* Comments and feedback
+* Approval workflow
+* Activity tracking
+* Notifications
 
-canceled
-
-
-
----
-
-Failed Payment Flow
-
-Grace Period
-
-7 days recommended.
-
-During grace:
-
-downloads continue
-
-uploads maybe restricted
-
-
+Anything beyond this must justify its existence.
 
 ---
 
-Restricted
+## Success Criteria
 
-uploads blocked
+We know the product is valuable when users:
 
-no new shares
+* repeatedly create shares
+* upload new revisions
+* collect feedback through the platform
+* request approvals through the platform
+* return every week to manage client deliveries
 
-
-Never instantly delete files.
-
-
----
-
-Storage Strategy
-
-Provider
-
-[Cloudflare R2](https://developers.cloudflare.com/r2/?utm_source=chatgpt.com)
-
-Reason:
-
-zero egress fees
-
-scalable
-
-ideal for file products
-
-
+If teams continue using hande_it after their first project, we are solving a real problem.
 
 ---
 
-Storage Protection Rules
+## Long-Term Goal
 
-Prevent Abuse
+Become the default place where agencies and creative teams deliver work to clients.
 
-upload limits
+Not another cloud drive.
 
-bandwidth limits
+Not another project management tool.
 
-rate limiting
-
-signed URLs
-
-expiry defaults
-
-
-
----
-
-Suggested Limits
-
-Free
-
-2 GB
-
-7-day expiry
-
-limited bandwidth
-
-
-
----
-
-Pro
-
-100 GB
-
-generous bandwidth
-
-
-
----
-
-Technical Architecture
-
-Frontend
-
-Stack
-
-React + Vite
-
-
-Reason:
-
-faster iteration
-
-simpler architecture
-
-dashboard-focused product
-
-
-
----
-
-UI Stack
-
-Tailwind CSS
-
-shadcn/ui
-
-TanStack Query
-
-Zustand minimal state
-
-
-
----
-
-Backend
-
-Stack
-
-NestJS
-
-
-Reason:
-
-scalable architecture
-
-modular
-
-good for queues/events/workspaces
-
-
-
----
-
-Database
-
-PostgreSQL
-
-Reason:
-
-relational collaboration model
-
-strong consistency
-
-scalable
-
-
-
----
-
-Queue System
-
-RabbitMQ
-
-Use for:
-
-thumbnail generation
-
-analytics processing
-
-notifications
-
-cleanup jobs
-
-version processing
-
-
-
----
-
-File Processing
-
-Workers handle:
-
-image optimization
-
-previews
-
-metadata extraction
-
-cleanup
-
-
-
----
-
-Object Storage
-
-Cloudflare R2
-
-Use:
-
-signed URLs
-
-presigned uploads
-
-direct upload flows
-
-
-
----
-
-Infrastructure
-
-Initial Deployment
-
-frontend → Cloudflare Pages/Vercel
-
-backend → VPS/Fly.io/Render
-
-PostgreSQL managed
-
-RabbitMQ managed/self-hosted
-
-
-
----
-
-Recommended Architecture Principles
-
-Async First
-
-Heavy operations should never block API.
-
-
----
-
-Event Driven
-
-Uploads/analytics/notifications async.
-
-
----
-
-Minimal Initial Complexity
-
-Avoid:
-
-microservices
-
-Kubernetes
-
-event sourcing insanity
-
-
-Monolith + workers is enough.
-
-
----
-
-Database High-Level Structure
-
-User
-
-Identity
-
-Workspace
-
-Collaboration + billing
-
-WorkspaceMember
-
-Membership + roles
-
-Share
-
-Core collaboration object
-
-File
-
-Assets
-
-FileVersion
-
-Version history
-
-Subscription
-
-Billing state
-
-Usage
-
-Storage/bandwidth metrics
-
-
----
-
-Security
-
-Critical
-
-signed URLs
-
-private object storage
-
-rate limiting
-
-upload validation
-
-antivirus later maybe
-
-
-
----
-
-UX Principles
-
-Emotional Feel
-
-Users should feel:
-
-calm
-
-fast
-
-organized
-
-professional
-
-
-
----
-
-Visual Direction
-
-Inspiration
-
-[Linear](https://linear.app?utm_source=chatgpt.com)
-
-[Dropbox](https://www.dropbox.com?utm_source=chatgpt.com)
-
-[Raycast](https://www.raycast.com?utm_source=chatgpt.com)
-
-
-
----
-
-Typography
-
-Font
-
-Inter
-
-
----
-
-Color System
-
-Primary Accent
-
-Blue family.
-
-Examples:
-
-#2563EB
-
-#3B82F6
-
-
-
----
-
-Design Language
-
-large whitespace
-
-subtle borders
-
-soft corners
-
-minimal gradients
-
-lightweight interactions
-
-
-
----
-
-Features to Explicitly Avoid Initially
-
-DO NOT BUILD:
-
-kanban
-
-tasks
-
-docs/wiki
-
-realtime editing
-
-chat systems
-
-complex ACLs
-
-enterprise RBAC
-
-AI gimmicks
-
-
-Stay laser-focused.
-
-
----
-
-Product Differentiation
-
-NOT:
-
-cloud storage
-
-generic uploads
-
-
-But:
-
-collaborative file delivery workflows.
-
-That is the strategic positioning.
-
-
----
-
-Success Metrics
-
-Product
-
-repeated share creation
-
-workspace retention
-
-collaboration frequency
-
-version usage
-
-
-
----
-
-Business
-
-free → pro conversion
-
-workspace expansion
-
-storage add-ons
-
-team upgrades
-
-
-
----
-
-MVP Success Criteria
-
-If users:
-
-repeatedly upload
-
-maintain shares
-
-collaborate through versions
-
-return weekly
-
-
-Then product has real workflow value.
-
-That is the validation milestone.
+The operating system for client delivery.
