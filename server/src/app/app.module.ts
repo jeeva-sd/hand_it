@@ -4,7 +4,7 @@ import { CacheModule, DatabaseModule, JobsModule } from '~/integrations';
 import { AuthModule } from '../modules/auth/auth.module';
 import { EventModule } from '../modules/events/events.module';
 import { ProjectModule } from '../modules/project/project.module';
-import { WorkspaceModule } from '../modules/workspace/workspace.module';
+import { WorkspaceModule } from '../modules/workspaces/workspace.module';
 
 @Module({
     imports: [
