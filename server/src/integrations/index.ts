@@ -8,3 +8,5 @@ export { EmailsService } from './email/email.service';
 export { createRmqMicroserviceOptions, extractRoutingKeys, RABBIT_MQ_QUEUE_KEYS } from './queue/job.helper';
 export { JobsModule } from './queue/job.module';
 export { JobsService } from './queue/job.service';
+export { R2Module } from './r2/r2.module';
+export { R2Service } from './r2/r2.service';

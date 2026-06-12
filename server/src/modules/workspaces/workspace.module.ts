@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '~/integrations';
+import { DatabaseModule, R2Module } from '~/integrations';
 import { JwtAuthGuard } from '../auth/strategies/jwt-auth.guard';
 import { StrategyModule } from '../auth/strategies/strategy.module';
 import { WorkspaceController } from './workspace.controller';
@@ -10,7 +10,7 @@ import { WorkspaceAccessService } from './workspace-access.service';
 import { WorkspaceCacheService } from './workspace-cache.service';
 
 @Module({
-    imports: [StrategyModule, DatabaseModule],
+    imports: [StrategyModule, DatabaseModule, R2Module],
     controllers: [WorkspaceController],
     providers: [
         WorkspaceService,

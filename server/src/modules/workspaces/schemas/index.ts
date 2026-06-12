@@ -4,5 +4,7 @@ export type { listWorkspaceInput as ListWorkspaceInputType } from './list-worksp
 export { listWorkspaceInput } from './list-workspace';
 export type { updateWorkspaceInput as UpdateWorkspaceInputType } from './update-workspace';
 export { updateWorkspaceInput } from './update-workspace';
+export type { uploadLogoInput as UploadLogoInputType } from './upload-logo';
+export { uploadLogoInput } from './upload-logo';
 export type { workspacePathInput as WorkspacePathInputType } from './workspace-path';
 export { workspacePathInput } from './workspace-path';

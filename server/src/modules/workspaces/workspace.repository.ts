@@ -9,9 +9,10 @@ export const WORKSPACE_SELECT = {
     plan: true,
     storageLimitBytes: true,
     storageUsedBytes: true,
+    logoMime: true,
     createdAt: true,
     updatedAt: true,
-    _count: { select: { members: true } }
+    _count: { select: { members: { where: { status: WorkspaceMemberStatus.ACTIVE } } } }
 } satisfies Prisma.WorkspaceSelect;
 
 export const WORKSPACE_LIST_SELECT = { id: true, name: true, createdAt: true } satisfies Prisma.WorkspaceSelect;
@@ -123,6 +124,14 @@ export class WorkspaceRepository {
         return this.txHandler(transaction).user.update({
             where: { id: userId },
             data: { lastUsedWorkspaceId: workspaceId }
+        });
+    }
+
+    updateWorkspaceLogo(workspaceId: string, logoMime: string | null, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).workspace.update({
+            where: { id: workspaceId },
+            data: { logoMime },
+            select: { id: true, logoMime: true }
         });
     }
 }

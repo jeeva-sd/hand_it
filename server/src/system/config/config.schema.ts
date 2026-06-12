@@ -260,6 +260,18 @@ const emailConfigSchema = z
 export const clientSchema = z.object({ url: z.string().url('Client URL must be a valid URL') });
 export const backendSchema = z.object({ url: z.string().url('Backend URL must be a valid URL') });
 
+const r2ConfigSchema = z.object({
+    accountId: z.string().trim(),
+    accessKeyId: z.string().trim(),
+    secretAccessKey: z.string().trim(),
+    bucket: z.string().trim(),
+    publicUrl: z.string().trim().optional().default(''),
+    signedUrlExpiry: z.object({
+        upload: z.number().int().positive().default(3600),
+        download: z.number().int().positive().default(3600)
+    })
+});
+
 // ----------------------------------------------------------------------------------------------------------
 
 export const AppConfigRule = z.object({
@@ -275,7 +287,8 @@ export const AppConfigRule = z.object({
     database: databaseRule,
     email: emailConfigSchema,
     client: clientSchema,
-    backend: backendSchema
+    backend: backendSchema,
+    r2: r2ConfigSchema
 });
 
 // ------------------------------------------------------------------------------------------------------------------

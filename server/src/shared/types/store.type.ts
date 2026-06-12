@@ -7,4 +7,5 @@ export interface Store extends ClsStore {
     workspaceRole?: WorkspaceRole;
     userId?: string;
     tokenData: TokenData;
+    user?: { id: string; fname: string };
 }

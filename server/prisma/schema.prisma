@@ -53,6 +53,7 @@ model User {
   email                String            @unique(map: "uk_user_email") @db.VarChar(255)
   passwordHash         String?           @db.VarChar(255)
   status               UserStatus?       @default(PENDING)
+  profileMime          String?           @db.VarChar(30)
   lastUsedWorkspaceId  String?
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
@@ -89,6 +90,7 @@ model Workspace {
   plan              WorkspacePlan     @default(FREE)
   storageLimitBytes BigInt            @default(2147483648) @db.UnsignedBigInt
   storageUsedBytes  BigInt            @default(0) @db.UnsignedBigInt
+  logoMime          String?           @db.VarChar(30)
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   lastUsedByUsers   User[]            @relation("workspace_last_used_by_users")

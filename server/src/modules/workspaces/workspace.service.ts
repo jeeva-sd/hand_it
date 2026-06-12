@@ -1,13 +1,22 @@
-import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import * as fs from 'node:fs/promises';
+import {
+    BadRequestException,
+    ForbiddenException,
+    Injectable,
+    NotFoundException,
+    UnauthorizedException
+} from '@nestjs/common';
 import { init } from '@paralleldrive/cuid2';
 import { WorkspaceRole } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
-import { PrismaService } from '~/integrations';
+import { PrismaService, R2Service } from '~/integrations';
 import { Store } from '~/shared/types/store.type';
+import { appConfig } from '~/system/config';
 import {
     CreateWorkspaceInputType,
     ListWorkspaceInputType,
     UpdateWorkspaceInputType,
+    UploadLogoInputType,
     WorkspacePathInputType
 } from './schemas';
 import { WorkspaceRepository } from './workspace.repository';
@@ -23,6 +32,7 @@ export interface WorkspaceSummary {
     plan: string;
     storageLimitBytes: number;
     storageUsedBytes: number;
+    logoUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
     membersCount: number;
@@ -39,7 +49,8 @@ export class WorkspaceService {
         private readonly workspaceRepository: WorkspaceRepository,
         private readonly cache: WorkspaceCacheService,
         private readonly access: WorkspaceAccessService,
-        private readonly cls: ClsService<Store>
+        private readonly cls: ClsService<Store>,
+        private readonly r2: R2Service
     ) {}
 
     private get userId(): string {
@@ -56,6 +67,7 @@ export class WorkspaceService {
         plan: string;
         storageLimitBytes: bigint;
         storageUsedBytes: bigint;
+        logoMime: string | null;
         createdAt: Date;
         updatedAt: Date;
         _count: { members: number };
@@ -66,6 +78,7 @@ export class WorkspaceService {
             plan: workspace.plan,
             storageLimitBytes: Number(workspace.storageLimitBytes),
             storageUsedBytes: Number(workspace.storageUsedBytes),
+            logoUrl: workspace.logoMime ? `${appConfig.backend.url}/api/v1/workspaces/${workspace.id}/logo` : null,
             createdAt: workspace.createdAt,
             updatedAt: workspace.updatedAt,
             membersCount: workspace._count.members
@@ -186,5 +199,55 @@ export class WorkspaceService {
         this.cache.invalidateAllRoles(workspaceId);
 
         return { message: 'Workspace deleted successfully' };
+    }
+
+    async uploadLogo(payload: UploadLogoInputType) {
+        const { workspaceId, logo } = payload;
+        if (!logo || logo.length === 0) {
+            throw new BadRequestException('Logo file is required');
+        }
+        const logoFile = logo[0];
+
+        const dbWorkspace = await this.workspaceRepository.findWorkspaceById(workspaceId);
+        if (!dbWorkspace) {
+            throw new NotFoundException('Workspace not found');
+        }
+
+        const fileBuffer = await fs.readFile(logoFile.filePath);
+        const key = `workspaces/${workspaceId}/logo`;
+        await this.r2.uploadFile(key, fileBuffer, logoFile.mimetype);
+
+        await this.workspaceRepository.updateWorkspaceLogo(workspaceId, logoFile.mimetype);
+
+        this.cache.invalidateDetail(workspaceId);
+
+        const memberUserIds = await this.workspaceRepository.findActiveMemberUserIds(workspaceId);
+        this.cache.invalidateLists(memberUserIds);
+
+        return { message: 'Logo uploaded successfully' };
+    }
+
+    async getLogo(workspaceId: string) {
+        let workspace = this.cache.getDetail<WorkspaceSummary>(workspaceId);
+        if (!workspace) {
+            const dbWorkspace = await this.workspaceRepository.findWorkspaceById(workspaceId);
+            if (!dbWorkspace) {
+                throw new NotFoundException('Workspace not found');
+            }
+            workspace = this.mapWorkspaceDetails(dbWorkspace);
+            this.cache.setDetail(workspaceId, workspace);
+        }
+
+        if (!workspace.logoUrl) {
+            throw new NotFoundException('Workspace logo not found');
+        }
+
+        const key = `workspaces/${workspaceId}/logo`;
+        try {
+            const result = await this.r2.downloadFile(key);
+            return { stream: result.Body, contentType: result.ContentType || 'image/png' };
+        } catch (_error) {
+            throw new NotFoundException('Workspace logo not found');
+        }
     }
 }
