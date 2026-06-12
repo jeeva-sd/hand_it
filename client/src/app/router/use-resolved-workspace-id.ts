@@ -21,7 +21,7 @@ export function useResolvedWorkspaceId(excludeId?: string) {
       return
     }
 
-    setWorkspaces(fetchedWorkspaces)
+    setWorkspaces(fetchedWorkspaces.workspaces)
   }, [fetchedWorkspaces, setWorkspaces])
 
   const resolvedWorkspaceId = useMemo(() => {

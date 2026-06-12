@@ -49,7 +49,7 @@ export function PostLoginResolverPage() {
       return
     }
 
-    setWorkspaces(fetchedWorkspaces)
+    setWorkspaces(fetchedWorkspaces.workspaces)
   }, [fetchedWorkspaces, setWorkspaces])
 
   useEffect(() => {

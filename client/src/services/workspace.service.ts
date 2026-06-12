@@ -3,6 +3,7 @@ import type { Project, Workspace, WorkspaceMember } from "@/types/workspace"
 import { apiRequest } from "./http.service"
 
 type WorkspaceListResponse = {
+  total: number
   workspaces: Workspace[]
 }
 
@@ -12,10 +13,6 @@ type WorkspaceDetailResponse = {
 
 type CreateWorkspaceRequest = {
   name: string
-}
-
-type CreateWorkspaceResponse = {
-  workspace: Workspace
 }
 
 type UpdateWorkspaceRequest = {
@@ -60,12 +57,30 @@ function formatProjectUpdatedAt(value: string): string {
   }).format(new Date(timestamp))
 }
 
-export async function listWorkspaces(): Promise<Workspace[]> {
-  const response = await apiRequest<WorkspaceListResponse>("/workspaces", {
+export async function listWorkspaces(
+  params: {
+    page?: number
+    size?: number
+    searchTerm?: string
+    sortBy?: string
+    sortOrder?: "asc" | "desc"
+  } = {}
+): Promise<{ total: number; workspaces: Workspace[] }> {
+  const queryParams = new URLSearchParams()
+  if (params.page !== undefined) queryParams.append("page", params.page.toString())
+  if (params.size !== undefined) queryParams.append("size", params.size.toString())
+  if (params.searchTerm !== undefined && params.searchTerm.trim() !== "") {
+    queryParams.append("searchTerm", params.searchTerm.trim())
+  }
+  if (params.sortBy !== undefined) queryParams.append("sortBy", params.sortBy)
+  if (params.sortOrder !== undefined) queryParams.append("sortOrder", params.sortOrder)
+
+  const queryString = queryParams.toString()
+  const path = `/workspaces${queryString ? `?${queryString}` : ""}`
+
+  return apiRequest<WorkspaceListResponse>(path, {
     method: "GET",
   })
-
-  return response.workspaces
 }
 
 export async function getWorkspace(workspaceId: string): Promise<Workspace> {
@@ -77,12 +92,12 @@ export async function getWorkspace(workspaceId: string): Promise<Workspace> {
 }
 
 export async function createWorkspace(payload: CreateWorkspaceRequest): Promise<Workspace> {
-  const response = await apiRequest<CreateWorkspaceResponse, CreateWorkspaceRequest>("/workspaces", {
+  const response = await apiRequest<{ id: string }, CreateWorkspaceRequest>("/workspaces", {
     method: "POST",
     body: payload,
   })
 
-  return response.workspace
+  return getWorkspace(response.id)
 }
 
 export async function updateWorkspace(workspaceId: string, payload: UpdateWorkspaceRequest): Promise<Workspace> {

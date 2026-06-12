@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ID_SCHEMA } from '~/system';
 
-export const updateWorkspaceSchema = z
+export const updateWorkspaceInput = z
     .object({
         workspaceId: ID_SCHEMA,
         name: z
@@ -16,4 +16,4 @@ export const updateWorkspaceSchema = z
         path: ['name']
     });
 
-export type UpdateWorkspacePayload = z.infer<typeof updateWorkspaceSchema>;
+export type updateWorkspaceInput = z.infer<typeof updateWorkspaceInput>;

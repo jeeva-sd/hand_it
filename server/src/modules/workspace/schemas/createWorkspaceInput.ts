@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const createWorkspaceSchema = z.object({
+export const createWorkspaceInput = z.object({
     name: z
         .string()
         .trim()
@@ -8,4 +8,4 @@ export const createWorkspaceSchema = z.object({
         .max(120, 'Workspace name must be at most 120 characters long')
 });
 
-export type CreateWorkspacePayload = z.infer<typeof createWorkspaceSchema>;
+export type createWorkspaceInput = z.infer<typeof createWorkspaceInput>;

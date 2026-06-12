@@ -13,6 +13,7 @@ export {
 } from './validation/req-payload.guard';
 export {
     boolFromUnknown,
+    createPaginationSchema,
     defaultBoolean,
     ID_SCHEMA,
     LIST_QUERY_BASE_SCHEMA,

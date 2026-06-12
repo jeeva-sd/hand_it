@@ -1,8 +1,8 @@
-export type { CreateWorkspacePayload } from './create-workspace.schema';
-export { createWorkspaceSchema } from './create-workspace.schema';
-export type { UpdateWorkspacePayload } from './update-workspace.schema';
-export { updateWorkspaceSchema } from './update-workspace.schema';
-export type { WorkspacePathPayload } from './workspace-path.schema';
-export { workspacePathSchema } from './workspace-path.schema';
-export type { WorkspaceProjectPathPayload } from './workspace-project-path.schema';
-export { workspaceProjectPathSchema } from './workspace-project-path.schema';
+export type { createWorkspaceInput as CreateWorkspaceInputType } from './createWorkspaceInput';
+export { createWorkspaceInput } from './createWorkspaceInput';
+export type { listWorkspaceInput as ListWorkspaceInputType } from './listWorkspaceInput';
+export { listWorkspaceInput } from './listWorkspaceInput';
+export type { updateWorkspaceInput as UpdateWorkspaceInputType } from './updateWorkspaceInput';
+export { updateWorkspaceInput } from './updateWorkspaceInput';
+export type { workspacePathInput as WorkspacePathInputType } from './workspacePathInput';
+export { workspacePathInput } from './workspacePathInput';

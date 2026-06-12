@@ -21,6 +21,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     async validate(_req: RequestX<unknown>, user: TokenData) {
         // Store requested user info in global store
         this.cls.set('tokenData', user);
+        if (user?.sub) {
+            this.cls.set('userId', user.sub.trim());
+        }
         return user; // Return the validated user data
     }
 }

@@ -62,3 +62,23 @@ export const LIST_QUERY_BASE_SCHEMA = z.object({
     searchTerm: SEARCH_TERM_SCHEMA,
     sortOrder: SORT_ORDER_SCHEMA
 });
+
+export const createPaginationSchema = <T extends z.ZodRawShape>(
+    sortByFields: [string, ...string[]],
+    defaultSortBy: 'createdAt',
+    extraFields?: T
+) => {
+    return z.object({
+        page: z.coerce.number().int('Page must be an integer').min(1, 'Page must be 1 or greater').default(1),
+        size: z.coerce
+            .number()
+            .int('Size must be an integer')
+            .min(1, 'Size must be at least 1')
+            .max(100, 'Size cannot exceed 100')
+            .default(10),
+        searchTerm: z.string().trim().max(20, 'Search term cannot exceed 20 characters').optional(),
+        sortBy: z.enum(sortByFields).default(defaultSortBy),
+        sortOrder: z.enum(['asc', 'desc']).default('desc'),
+        ...extraFields
+    });
+};

@@ -38,7 +38,7 @@ type AuthUserResponse = {
     updatedAt: Date;
 };
 
-type WorkspacePlanLabel = 'Free' | 'Pro' | 'Team';
+type WorkspacePlanLabel = 'Free' | 'Pro';
 
 type LastUsedWorkspaceResponse = {
     id: string;
@@ -431,8 +431,6 @@ export class AuthService {
         switch (plan) {
             case WorkspacePlan.PRO:
                 return 'Pro';
-            case WorkspacePlan.TEAM:
-                return 'Team';
             default:
                 return 'Free';
         }

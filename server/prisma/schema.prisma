@@ -23,7 +23,6 @@ enum UserStatus {
 enum WorkspacePlan {
   FREE
   PRO
-  TEAM
 }
 
 enum WorkspaceRole {
@@ -31,6 +30,13 @@ enum WorkspaceRole {
   ADMIN
   MEMBER
   VIEWER
+}
+
+enum WorkspaceMemberStatus {
+  INVITED
+  ACTIVE
+  DECLINED
+  DELETED
 }
 
 enum ProjectStatus {
@@ -51,7 +57,6 @@ model User {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   authTokens           AuthToken[]
-  createdWorkspaces    Workspace[]       @relation("workspace_creator")
   lastUsedWorkspace    Workspace?        @relation("workspace_last_used_by_users", fields: [lastUsedWorkspaceId], references: [id], onDelete: SetNull)
   workspaceMemberships WorkspaceMember[]
   projectFavorites     ProjectFavorite[]
@@ -84,17 +89,32 @@ model Workspace {
   plan              WorkspacePlan     @default(FREE)
   storageLimitBytes BigInt            @default(2147483648) @db.UnsignedBigInt
   storageUsedBytes  BigInt            @default(0) @db.UnsignedBigInt
-  createdByUserId   String
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
-  createdByUser     User              @relation("workspace_creator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   lastUsedByUsers   User[]            @relation("workspace_last_used_by_users")
   members           WorkspaceMember[]
   projects          Project[]
 
-  @@index([createdByUserId], map: "idx_workspace_created_by")
   @@index([plan], map: "idx_workspace_plan")
   @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id          String                @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        WorkspaceRole         @default(MEMBER)
+  status      WorkspaceMemberStatus @default(ACTIVE)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId], map: "uk_workspace_member_workspace_user")
+  @@index([userId], map: "idx_workspace_member_user")
+  @@index([workspaceId, role], map: "idx_workspace_member_workspace_role")
+  @@map("workspace_members")
 }
 
 model Project {
@@ -126,21 +146,4 @@ model ProjectFavorite {
   @@unique([projectId, userId], map: "uk_project_favorite_project_user")
   @@index([userId], map: "idx_project_favorite_user")
   @@map("project_favorites")
-}
-
-model WorkspaceMember {
-  id          String        @id @default(cuid())
-  workspaceId String
-  userId      String
-  role        WorkspaceRole @default(MEMBER)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([workspaceId, userId], map: "uk_workspace_member_workspace_user")
-  @@index([userId], map: "idx_workspace_member_user")
-  @@index([workspaceId, role], map: "idx_workspace_member_workspace_role")
-  @@map("workspace_members")
 }
