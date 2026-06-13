@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule } from '~/integrations';
+import { DatabaseModule, EmailsModule } from '~/integrations';
 import { StrategyModule } from '../auth/strategies/strategy.module';
 import { WorkspaceModule } from '../workspaces/workspace.module';
 import { WorkspaceInvitationService } from './workspace-invitation.service';
@@ -9,7 +9,7 @@ import { WorkspaceMembersService } from './workspace-members.service';
 import { WorkspaceMembersCacheService } from './workspace-members-cache.service';
 
 @Module({
-    imports: [StrategyModule, DatabaseModule, WorkspaceModule],
+    imports: [StrategyModule, DatabaseModule, WorkspaceModule, EmailsModule],
     controllers: [WorkspaceMembersController],
     providers: [
         WorkspaceMembersService,

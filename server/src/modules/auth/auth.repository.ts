@@ -52,14 +52,13 @@ export class AuthRepository {
         const execute = async (tx: PrismaClientLike) => {
             const workspaceId = generateWorkspaceId();
 
-            // Create user first
+            // Create user first without setting lastUsedWorkspaceId to prevent foreign key violation
             const user = await tx.user.create({
                 data: {
                     fname: data.fname,
                     lname: data.lname,
                     email: data.email,
-                    status: data.status,
-                    lastUsedWorkspaceId: workspaceId
+                    status: data.status
                 }
             });
 
@@ -76,7 +75,13 @@ export class AuthRepository {
                 }
             });
 
-            return user;
+            // Update user's lastUsedWorkspaceId after workspace has been created
+            const updatedUser = await tx.user.update({
+                where: { id: user.id },
+                data: { lastUsedWorkspaceId: workspaceId }
+            });
+
+            return updatedUser;
         };
 
         if (transaction) {

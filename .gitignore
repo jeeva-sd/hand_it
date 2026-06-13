@@ -107,3 +107,5 @@ uploads
 
 .env.example
 worker/bin
+
+design-ux
