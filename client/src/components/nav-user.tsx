@@ -2,11 +2,7 @@ import { useState, useRef, type ChangeEvent, type FormEvent } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuthStore } from "@/stores/auth.store"
 import { updateProfile, uploadProfileImage } from "@/services/auth.service"
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/user-avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -149,10 +145,13 @@ export function NavUser({
                 size="lg"
                 className="h-10 rounded-xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <UserAvatar
+                  userId={authUser?.id}
+                  fname={authUser?.fname || "HandIt"}
+                  lname={authUser?.lname || "User"}
+                  className="h-8 w-8 rounded-lg"
+                  fallbackClassName="rounded-lg"
+                />
                 <span className="min-w-0 flex-1 truncate text-left text-sm font-medium">{user.name}</span>
                 <ChevronDownIcon className="ml-auto size-4" />
               </SidebarMenuButton>
@@ -166,10 +165,13 @@ export function NavUser({
             >
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm">
-                  <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">{user.name.slice(0, 2).toUpperCase()}</AvatarFallback>
-                  </Avatar>
+                  <UserAvatar
+                    userId={authUser?.id}
+                    fname={authUser?.fname || "HandIt"}
+                    lname={authUser?.lname || "User"}
+                    className="h-8 w-8 rounded-lg"
+                    fallbackClassName="rounded-lg"
+                  />
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
                     <span className="truncate text-xs text-muted-foreground">{user.email}</span>
@@ -224,12 +226,13 @@ export function NavUser({
           {/* Profile Picture Upload Section */}
           <div className="flex flex-col items-center gap-4 py-8 bg-muted/20 rounded-2xl border border-dashed border-border/80 mt-6">
             <div className="relative group cursor-pointer" onClick={triggerFileSelect}>
-              <Avatar className="h-20 w-20 rounded-full border-2 border-border shadow-inner transition-transform duration-300 group-hover:scale-105">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="text-xl font-semibold bg-primary/10 text-primary">
-                  {user.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                userId={authUser?.id}
+                fname={authUser?.fname || "HandIt"}
+                lname={authUser?.lname || "User"}
+                className="h-20 w-20 rounded-full border-2 border-border shadow-inner transition-transform duration-300 group-hover:scale-105"
+                fallbackClassName="text-xl font-semibold bg-primary/10 text-primary"
+              />
               <div className="absolute inset-0 bg-black/45 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                 <CameraIcon className="size-6 text-white" />
               </div>

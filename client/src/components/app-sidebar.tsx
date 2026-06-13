@@ -26,7 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { UserAvatar } from "@/components/user-avatar"
+import { useAuthStore } from "@/stores/auth.store"
 import { cn } from "@/lib/utils"
 
 type WorkspaceItem = {
@@ -136,6 +137,7 @@ export function AppSidebar({
   onLinkClick?: () => void
 }) {
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
+  const authUser = useAuthStore((state) => state.user)
   const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "HI"
 
   const workspaceHomePath = activeWorkspaceId ? `/w/${activeWorkspaceId}` : "/"
@@ -219,11 +221,13 @@ export function AppSidebar({
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent">
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {user.name ? user.name.slice(0, 2).toUpperCase() : "US"}
-                </AvatarFallback>
-              </Avatar>
+              <UserAvatar
+                userId={authUser?.id}
+                fname={authUser?.fname || "HandIt"}
+                lname={authUser?.lname || "User"}
+                className="h-7 w-7"
+                fallbackClassName="bg-primary/10 text-primary text-xs"
+              />
               <span className="flex-1 text-left font-medium truncate">{user.name}</span>
               <ChevronDown className="h-4 w-4 opacity-60" />
             </button>

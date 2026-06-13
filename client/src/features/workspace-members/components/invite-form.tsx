@@ -2,6 +2,13 @@ import { useState } from "react"
 import { Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useInviteMemberMutation } from "../queries"
 import { type AppRole, roleMapToBackend } from "../types"
 import { resolveApiError } from "@/services/http.service"
@@ -75,18 +82,22 @@ export function InviteMemberForm({
               handleInvite()
             }
           }}
-          className="flex-1 text-sm h-9"
+          className="flex-1 text-sm h-9 focus-visible:ring-1"
           disabled={isFreePlan || inviteMutation.isPending}
         />
-        <select
+        <Select
           value={inviteRole}
-          onChange={(e) => setInviteRole(e.target.value as AppRole)}
-          className="h-9 rounded-md border border-input bg-background px-3 text-sm focus:outline-none sm:w-32"
+          onValueChange={(value) => setInviteRole(value as AppRole)}
           disabled={isFreePlan || inviteMutation.isPending}
         >
-          <option value="Member">Member</option>
-          <option value="Admin">Admin</option>
-        </select>
+          <SelectTrigger className="h-9 sm:w-32">
+            <SelectValue placeholder="Select role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Member">Member</SelectItem>
+            <SelectItem value="Admin">Admin</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           onClick={handleInvite}
           disabled={isFreePlan || inviteMutation.isPending}
