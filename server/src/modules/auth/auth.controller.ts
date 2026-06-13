@@ -1,5 +1,5 @@
 import '@fastify/view';
-import { Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, HttpCode, Patch, Post, Put, Req, Res, UseGuards } from '@nestjs/common';
 import { FastifyReply } from 'fastify';
 import { RequestX } from '~/shared/types/request.type';
 import { Sanitize } from '~/system';
@@ -10,12 +10,18 @@ import {
     forgetPasswordSchema,
     LoginPayload,
     loginSchema,
+    ProfileImageParamsPayload,
+    profileImageParamsSchema,
     ResetPasswordPagePayload,
     ResetPasswordPayload,
     resetPasswordPageSchema,
     resetPasswordSchema,
     SignupPayload,
-    signupSchema
+    signupSchema,
+    UpdateProfilePayload,
+    UploadProfileImagePayload,
+    updateProfileSchema,
+    uploadProfileImageSchema
 } from './schemas';
 import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 
@@ -111,5 +117,31 @@ export class AuthController {
         const result = await this.authService.resetPassword(request.payload);
         this.authService.attachAuthCookie(response, result.token);
         return result;
+    }
+
+    @Patch('profile')
+    @UseGuards(JwtAuthGuard)
+    @Sanitize(updateProfileSchema)
+    async updateProfile(@Req() request: RequestX<UpdateProfilePayload>) {
+        return this.authService.updateProfile(request.user, request.payload);
+    }
+
+    @Put('profile-image')
+    @UseGuards(JwtAuthGuard)
+    @Sanitize(uploadProfileImageSchema)
+    async uploadProfileImage(@Req() request: RequestX<UploadProfileImagePayload>) {
+        return this.authService.uploadProfileImage(request.user, request.payload);
+    }
+
+    @Get('profile-image/:userId')
+    @SkipJwtAuth()
+    @Sanitize(profileImageParamsSchema)
+    async getProfileImage(@Req() request: RequestX<ProfileImageParamsPayload>, @Res() res: FastifyReply) {
+        const { userId } = request.payload;
+        const { stream, contentType } = await this.authService.getProfileImage(userId);
+
+        res.header('Content-Type', contentType);
+        res.header('Cache-Control', 'public, max-age=604800'); // Cache for 7 days
+        res.send(stream);
     }
 }

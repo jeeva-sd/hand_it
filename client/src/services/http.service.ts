@@ -84,7 +84,9 @@ export async function apiRequest<TResponse, TBody = unknown>(
     ...(options.headers ?? {}),
   }
 
-  if (options.body !== undefined) {
+  const isFormData = options.body instanceof FormData
+
+  if (options.body !== undefined && !isFormData) {
     headers["Content-Type"] = "application/json"
   }
 
@@ -97,7 +99,9 @@ export async function apiRequest<TResponse, TBody = unknown>(
       method,
       headers,
       credentials: appConfig.api.withCredentials ? "include" : "same-origin",
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body: options.body !== undefined
+        ? (isFormData ? (options.body as unknown as BodyInit) : JSON.stringify(options.body))
+        : undefined,
       signal: controller.signal,
     })
 

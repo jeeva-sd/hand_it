@@ -24,7 +24,7 @@ import { WorkspaceAccessService } from './workspace-access.service';
 import { WorkspaceCacheService } from './workspace-cache.service';
 
 const generateWorkspaceId = init({ length: 10 });
-const FREE_WORKSPACE_STORAGE_LIMIT_BYTES = BigInt(2 * 1024 * 1024 * 1024);
+const _FREE_WORKSPACE_STORAGE_LIMIT_BYTES = BigInt(2 * 1024 * 1024 * 1024);
 
 export interface WorkspaceSummary {
     id: string;
@@ -109,12 +109,7 @@ export class WorkspaceService {
         const userId = this.userId;
         const workspaceId = generateWorkspaceId();
 
-        const result = await this.workspaceRepository.createWorkspace(
-            workspaceId,
-            payload.name,
-            userId,
-            FREE_WORKSPACE_STORAGE_LIMIT_BYTES
-        );
+        const result = await this.workspaceRepository.createWorkspace(workspaceId, payload.name, userId, 0n);
 
         await this.workspaceRepository.updateUserLastWorkspace(userId, result.id);
 

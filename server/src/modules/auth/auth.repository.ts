@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { AuthTokenType, UserStatus } from '@prisma/client';
+import { init } from '@paralleldrive/cuid2';
+import { AuthTokenType, UserStatus, WorkspaceMemberStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
 import { PrismaService } from '~/integrations';
 import { PrismaClientLike, PrismaTransaction } from '~/shared/types/prisma';
+
+const generateWorkspaceId = init({ length: 10 });
 
 type CreateUserData = { fname: string; lname: string; email: string; status: UserStatus };
 
@@ -46,8 +49,46 @@ export class AuthRepository {
     }
 
     async createUser(data: CreateUserData, transaction?: PrismaTransaction) {
-        return this.txHandler(transaction).user.create({
-            data: { fname: data.fname, lname: data.lname, email: data.email, status: data.status }
+        const execute = async (tx: PrismaClientLike) => {
+            const workspaceId = generateWorkspaceId();
+
+            // Create user first
+            const user = await tx.user.create({
+                data: {
+                    fname: data.fname,
+                    lname: data.lname,
+                    email: data.email,
+                    status: data.status,
+                    lastUsedWorkspaceId: workspaceId
+                }
+            });
+
+            // Create workspace and owner membership
+            await tx.workspace.create({
+                data: {
+                    id: workspaceId,
+                    name: 'My Workspace',
+                    plan: WorkspacePlan.FREE,
+                    storageLimitBytes: BigInt(2 * 1024 * 1024 * 1024),
+                    members: {
+                        create: { userId: user.id, role: WorkspaceRole.OWNER, status: WorkspaceMemberStatus.ACTIVE }
+                    }
+                }
+            });
+
+            return user;
+        };
+
+        if (transaction) {
+            return execute(transaction);
+        }
+        return this.prisma.$transaction(execute);
+    }
+
+    async updateUserProfileImage(data: { id: string; profileMime: string | null }, transaction?: PrismaTransaction) {
+        return this.txHandler(transaction).user.update({
+            where: { id: data.id },
+            data: { profileMime: data.profileMime }
         });
     }
 

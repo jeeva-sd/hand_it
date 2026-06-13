@@ -15,6 +15,7 @@ type AuthStore = {
   }) => void
   setSessionFromMe: (payload: AuthMeResponse) => void
   setLastUsedWorkspace: (lastUsedWorkspace: LastUsedWorkspace | null) => void
+  updateUser: (user: AuthUser) => void
   markUnauthenticated: () => void
   clearSession: () => void
 }
@@ -43,6 +44,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
   setLastUsedWorkspace: (lastUsedWorkspace) => {
     set({
       lastUsedWorkspace,
+    })
+  },
+  updateUser: (user) => {
+    set({
+      user,
     })
   },
   markUnauthenticated: () => {

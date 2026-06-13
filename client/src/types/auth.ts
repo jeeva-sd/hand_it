@@ -3,7 +3,8 @@ export type AuthUser = {
   fname: string
   lname: string
   email: string
-  status: number | null
+  avatarUrl: string | null
+  status: string | null
   createdAt: string
   updatedAt: string
 }

@@ -1,4 +1,5 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
+import * as fs from 'node:fs/promises';
 import { promisify } from 'node:util';
 import {
     BadRequestException,
@@ -6,17 +7,25 @@ import {
     Inject,
     Injectable,
     InternalServerErrorException,
+    NotFoundException,
     UnauthorizedException
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { AuthTokenType, User, UserStatus, WorkspacePlan } from '@prisma/client';
 import { FastifyReply } from 'fastify';
-import { EmailsService, PrismaService } from '~/integrations';
+import { EmailsService, PrismaService, R2Service } from '~/integrations';
 import { EMAIL_TYPES, EmailType } from '~/integrations/email/email.constants';
 import { TokenData } from '~/shared/types/request.type';
 import { appConfig } from '~/system/config';
 import { AuthRepository } from './auth.repository';
-import { ForgetPasswordPayload, LoginPayload, ResetPasswordPayload, SignupPayload } from './schemas';
+import {
+    ForgetPasswordPayload,
+    LoginPayload,
+    ResetPasswordPayload,
+    SignupPayload,
+    UpdateProfilePayload,
+    UploadProfileImagePayload
+} from './schemas';
 
 const scryptAsync = promisify(scrypt);
 
@@ -34,6 +43,7 @@ type AuthUserResponse = {
     lname: string;
     email: string;
     status: string | null;
+    avatarUrl: string | null;
     createdAt: Date;
     updatedAt: Date;
 };
@@ -74,6 +84,7 @@ export class AuthService {
         private readonly prisma: PrismaService,
         private readonly authRepository: AuthRepository,
         private readonly emailsService: EmailsService,
+        private readonly r2: R2Service,
         @Inject(appConfig.auth.basicJWT.name) private readonly jwtService: JwtService
     ) {}
 
@@ -343,6 +354,59 @@ export class AuthService {
         reply.clearCookie(cookieName, { sameSite: 'lax', secure: appConfig.server.mode === 'production', path: '/' });
     }
 
+    async updateProfile(user: TokenData, payload: UpdateProfilePayload) {
+        const userId = user.sub;
+        const dbUser = await this.authRepository.findUserById({ id: userId });
+        if (!dbUser) {
+            throw new BadRequestException('User not found');
+        }
+
+        const updatedUser = await this.authRepository.updateUserProfile({
+            id: userId,
+            fname: payload.fname,
+            lname: payload.lname
+        });
+
+        return this.mapUser(updatedUser);
+    }
+
+    async uploadProfileImage(user: TokenData, payload: UploadProfileImagePayload) {
+        const userId = user.sub;
+        const { profileImage } = payload;
+        if (!profileImage || profileImage.length === 0) {
+            throw new BadRequestException('Profile image file is required');
+        }
+        const profileImageFile = profileImage[0];
+
+        const dbUser = await this.authRepository.findUserById({ id: userId });
+        if (!dbUser) {
+            throw new BadRequestException('User not found');
+        }
+
+        const fileBuffer = await fs.readFile(profileImageFile.filePath);
+        const key = `users/${userId}/profile`;
+        await this.r2.uploadFile(key, fileBuffer, profileImageFile.mimetype);
+
+        await this.authRepository.updateUserProfileImage({ id: userId, profileMime: profileImageFile.mimetype });
+
+        return { message: 'Profile image uploaded successfully' };
+    }
+
+    async getProfileImage(userId: string) {
+        const dbUser = await this.authRepository.findUserById({ id: userId });
+        if (!dbUser?.profileMime) {
+            throw new NotFoundException('Profile image not found');
+        }
+
+        const key = `users/${userId}/profile`;
+        try {
+            const result = await this.r2.downloadFile(key);
+            return { stream: result.Body, contentType: result.ContentType || 'image/png' };
+        } catch (_error) {
+            throw new NotFoundException('Profile image not found');
+        }
+    }
+
     private mapUser(user: User): AuthUserResponse {
         return {
             id: user.id,
@@ -350,6 +414,7 @@ export class AuthService {
             lname: user.lname,
             email: user.email,
             status: user.status,
+            avatarUrl: user.profileMime ? `${appConfig.backend.url}/api/v1/auth/profile-image/${user.id}` : null,
             createdAt: user.createdAt,
             updatedAt: user.updatedAt
         };

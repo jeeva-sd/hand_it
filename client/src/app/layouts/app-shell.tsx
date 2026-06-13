@@ -181,7 +181,7 @@ export function AppShellLayout() {
   const user = {
     name: authUser ? `${authUser.fname} ${authUser.lname}`.trim() : "HandIt User",
     email: authUser?.email ?? "user@handit.app",
-    avatar: "/avatars/user.jpg",
+    avatar: authUser?.avatarUrl ?? "/avatars/user.jpg",
   }
 
   const handleSignOut = () => {

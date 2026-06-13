@@ -1,5 +1,6 @@
 import type {
   AuthMeResponse,
+  AuthUser,
   ForgetPasswordRequest,
   ForgetPasswordResponse,
   LoginRequest,
@@ -47,4 +48,18 @@ export function logoutSession() {
 
 export function getGoogleSignInUrl() {
   return appConfig.auth.googleSignInUrl
+}
+
+export function updateProfile(payload: { fname: string; lname: string }) {
+  return apiRequest<AuthUser, { fname: string; lname: string }>("/auth/profile", {
+    method: "PATCH",
+    body: payload,
+  })
+}
+
+export function uploadProfileImage(payload: FormData) {
+  return apiRequest<{ message: string }, FormData>("/auth/profile-image", {
+    method: "PUT",
+    body: payload,
+  })
 }

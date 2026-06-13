@@ -9,7 +9,7 @@ export type TokenData = {
 };
 
 export interface RequestX<T> extends FastifyRequest {
-    user?: TokenData;
+    user: TokenData;
     userPermissions?: string[];
     payload: T;
     startTime?: number;

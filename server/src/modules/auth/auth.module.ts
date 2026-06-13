@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { DatabaseModule, EmailsModule } from '~/integrations';
+import { DatabaseModule, EmailsModule, R2Module } from '~/integrations';
 import { EventModule } from '../events/events.module';
 import { AuthController } from './auth.controller';
 import { AuthRepository } from './auth.repository';
@@ -9,7 +9,7 @@ import { JwtAuthGuard } from './strategies/jwt-auth.guard';
 import { StrategyModule } from './strategies/strategy.module';
 
 @Module({
-    imports: [StrategyModule, EventModule, DatabaseModule, EmailsModule],
+    imports: [StrategyModule, EventModule, DatabaseModule, EmailsModule, R2Module],
     controllers: [AuthController, GoogleAuthController],
     providers: [AuthService, AuthRepository, JwtAuthGuard]
 })
