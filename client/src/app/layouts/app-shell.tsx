@@ -2,6 +2,8 @@ import { useState, useMemo } from "react"
 import { Outlet, useLocation, useNavigate, useParams } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Toaster } from "@/components/ui"
+import { WorkspaceAvatar } from "@/components/workspace-avatar"
 import { useProjectsQuery } from "@/features/project/use-projects-query"
 import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { logoutSession } from "@/services/auth.service"
@@ -56,6 +58,8 @@ export function AppShellLayout() {
           id: workspace.id,
           name: workspace.name,
           plan: workspace.plan,
+          logoUrl: workspace.logoUrl,
+          updatedAt: workspace.updatedAt,
         }))
       : lastUsedWorkspace
         ? [
@@ -63,6 +67,8 @@ export function AppShellLayout() {
               id: lastUsedWorkspace.id,
               name: lastUsedWorkspace.name,
               plan: lastUsedWorkspace.plan,
+              logoUrl: null,
+              updatedAt: undefined,
             },
           ]
         : []
@@ -119,7 +125,7 @@ export function AppShellLayout() {
   }
 
   return (
-    <div className="flex min-h-screen w-full bg-background text-foreground">
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
       {/* Mobile Sidebar Backdrop */}
       {isSidebarOpen && (
         <div
@@ -131,7 +137,7 @@ export function AppShellLayout() {
       {/* Sidebar Container Wrapper */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-64 transform flex-col border-r bg-sidebar transition-transform duration-200 ease-in-out md:static md:translate-x-0",
+          "fixed inset-y-0 left-0 z-50 flex h-full w-64 transform flex-col border-r bg-sidebar transition-transform duration-200 ease-in-out md:static md:translate-x-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -161,23 +167,32 @@ export function AppShellLayout() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0">
-        {/* Mobile Navigation Header */}
-        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card">
+      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
+        <header className="flex h-14 items-center justify-between border-b px-4 md:hidden bg-card shrink-0">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground"
+            className="rounded-md p-1.5 hover:bg-accent hover:text-accent-foreground cursor-pointer"
           >
             <Menu className="h-5 w-5" />
           </button>
-          <span className="text-sm font-semibold truncate px-2">{activeWorkspace?.name || "handit"}</span>
+          <div className="flex items-center gap-2 px-2 min-w-0">
+            <WorkspaceAvatar
+              name={activeWorkspace?.name || "handit"}
+              logoUrl={activeWorkspace?.logoUrl}
+              updatedAt={activeWorkspace?.updatedAt}
+              className="h-5 w-5 rounded"
+              fallbackClassName="text-[9px] font-semibold bg-primary text-primary-foreground"
+            />
+            <span className="text-sm font-semibold truncate">{activeWorkspace?.name || "handit"}</span>
+          </div>
           <div className="w-8" />
         </header>
 
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 overflow-y-auto">
           <Outlet />
         </main>
       </div>
+      <Toaster />
     </div>
   )
 }

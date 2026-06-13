@@ -1,9 +1,9 @@
 import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   listWorkspaceMembers,
-  inviteWorkspaceMember,
   updateWorkspaceMemberRole,
   removeWorkspaceMember,
+  inviteWorkspaceMember,
 } from "@/services/workspace.service"
 
 export function useWorkspaceMembersQuery(workspaceId: string) {
@@ -41,18 +41,6 @@ export function useWorkspaceMembersInfiniteQuery(workspaceId: string, searchTerm
   })
 }
 
-export function useInviteMemberMutation(workspaceId: string, onSuccess: () => void, onError: (error: any) => void) {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (payload: { email: string; role: string }) =>
-      inviteWorkspaceMember(workspaceId, payload),
-    onSuccess: () => {
-      onSuccess()
-      void queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "members"] })
-    },
-    onError,
-  })
-}
 
 export function useUpdateMemberRoleMutation(workspaceId: string, onSuccess: () => void, onError: (error: any) => void) {
   const queryClient = useQueryClient()
@@ -71,6 +59,19 @@ export function useRemoveMemberMutation(workspaceId: string, onSuccess: () => vo
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (memberId: string) => removeWorkspaceMember(workspaceId, memberId),
+    onSuccess: () => {
+      onSuccess()
+      void queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "members"] })
+    },
+    onError,
+  })
+}
+
+export function useInviteMemberMutation(workspaceId: string, onSuccess: () => void, onError: (error: any) => void) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: { email: string; role: string }) =>
+      inviteWorkspaceMember(workspaceId, payload),
     onSuccess: () => {
       onSuccess()
       void queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId, "members"] })

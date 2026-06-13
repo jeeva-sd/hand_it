@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workspace Invitation</title>
+    <style>
+        :root {
+            --bg: #f8faff;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #475569;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --danger: #b42318;
+            --danger-bg: #fef3f2;
+            --danger-border: #fecdca;
+            --success: #067647;
+            --success-bg: #ecfdf3;
+            --success-border: #abefc6;
+            --ring: rgba(37, 99, 235, 0.22);
+            --border: #dbe5ef;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 18% 18%, rgba(37, 99, 235, 0.1), transparent 36%),
+                radial-gradient(circle at 82% 0%, rgba(96, 165, 250, 0.12), transparent 30%),
+                var(--bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 460px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 18px 48px rgba(37, 99, 235, 0.14);
+            padding: 28px;
+        }
+
+        .brand {
+            margin: 0 0 14px;
+            color: var(--accent);
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.01em;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: 28px;
+            line-height: 1.2;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            margin: 0 0 20px;
+            color: var(--muted);
+            font-size: 15px;
+            line-height: 1.5;
+        }
+
+        .workspace-badge {
+            display: inline-block;
+            margin-bottom: 22px;
+            padding: 8px 16px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .field {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            color: #334155;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        input {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            padding: 12px;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px var(--ring);
+        }
+
+        .rules-container {
+            margin-bottom: 22px;
+            padding: 16px;
+            background: #f0f4f8;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .rules-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text);
+            margin: 0 0 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .rule {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--muted);
+        }
+
+        .rule:last-child {
+            margin-bottom: 0;
+        }
+
+        .rule-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            flex-shrink: 0;
+            border: 2px solid #cbd5e1;
+            color: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .rule.completed .rule-icon {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .rule-text {
+            flex: 1;
+        }
+
+        .rule.completed .rule-text {
+            color: var(--success);
+        }
+
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .btn {
+            flex: 1;
+            border: 0;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 12px 14px;
+            transition: background-color 0.2s ease, opacity 0.2s ease;
+        }
+
+        .btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        .btn-accept {
+            background: var(--accent);
+            color: #ffffff;
+        }
+
+        .btn-accept:hover:not(:disabled) {
+            background: var(--accent-hover);
+        }
+
+        .btn-decline {
+            background: transparent;
+            color: var(--danger);
+            border: 1px solid var(--danger-border);
+        }
+
+        .btn-decline:hover:not(:disabled) {
+            background: var(--danger-bg);
+        }
+
+        .error, .success {
+            margin-top: 14px;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 14px;
+        }
+
+        .error {
+            background: var(--danger-bg);
+            border: 1px solid var(--danger-border);
+            color: var(--danger);
+        }
+
+        .success {
+            background: var(--success-bg);
+            border: 1px solid var(--success-border);
+            color: var(--success);
+        }
+
+        .home-link {
+            display: inline-block;
+            margin-top: 16px;
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .home-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 480px) {
+            .card {
+                padding: 22px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .rules-container {
+                padding: 12px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="card">
+        <p class="brand">Handit</p>
+
+        {{#if valid}}
+            <h1>Workspace Invitation</h1>
+            <p class="subtitle">You've been invited to join a workspace.</p>
+
+            <div class="workspace-badge">{{workspaceName}}</div>
+
+            <form
+                id="invite-form"
+                novalidate
+                data-accept-endpoint="{{acceptEndpoint}}"
+                data-decline-endpoint="{{declineEndpoint}}"
+                data-token="{{token}}"
+                data-is-new-user="{{isNewUser}}"
+            >
+                {{#if isNewUser}}
+                    <div class="field">
+                        <label for="password">Password</label>
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            minlength="8"
+                            maxlength="128"
+                            autocomplete="new-password"
+                            required
+                        />
+                    </div>
+
+                    <div class="field">
+                        <label for="confirmPassword">Confirm Password</label>
+                        <input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            type="password"
+                            minlength="8"
+                            maxlength="128"
+                            autocomplete="new-password"
+                            required
+                        />
+                    </div>
+
+                    <div class="rules-container">
+                        <p class="rules-title">Password Requirements</p>
+                        <div class="rule" id="rule-length">
+                            <div class="rule-icon">✓</div>
+                            <span class="rule-text">At least 8 characters</span>
+                        </div>
+                        <div class="rule" id="rule-uppercase">
+                            <div class="rule-icon">✓</div>
+                            <span class="rule-text">Has uppercase letter (A-Z)</span>
+                        </div>
+                        <div class="rule" id="rule-lowercase">
+                            <div class="rule-icon">✓</div>
+                            <span class="rule-text">Has lowercase letter (a-z)</span>
+                        </div>
+                        <div class="rule" id="rule-number">
+                            <div class="rule-icon">✓</div>
+                            <span class="rule-text">Has number (0-9)</span>
+                        </div>
+                        <div class="rule" id="rule-match">
+                            <div class="rule-icon">✓</div>
+                            <span class="rule-text">Passwords match</span>
+                        </div>
+                    </div>
+                {{/if}}
+
+                <div class="actions">
+                    <button id="accept-button" class="btn btn-accept" type="button" disabled>Accept</button>
+                    <button id="decline-button" class="btn btn-decline" type="button">Decline</button>
+                </div>
+            </form>
+
+            <div id="error-box" class="error" style="display: none"></div>
+            <div id="success-box" class="success" style="display: none"></div>
+
+            <noscript>
+                <div class="error">This page requires JavaScript to respond to the invitation.</div>
+            </noscript>
+            <script src="/static/auth/invite.js?v=1" defer></script>
+        {{else}}
+            <h1>Invitation Unavailable</h1>
+            <div class="error">{{errorMessage}}</div>
+            <a href="{{clientUrl}}" class="home-link">← Back to Home</a>
+        {{/if}}
+    </main>
+</body>
+</html>

@@ -7,24 +7,12 @@ type WorkspaceListResponse = {
   workspaces: Workspace[]
 }
 
-type WorkspaceDetailResponse = {
-  workspace: Workspace
-}
-
 type CreateWorkspaceRequest = {
   name: string
 }
 
 type UpdateWorkspaceRequest = {
   name: string
-}
-
-type UpdateWorkspaceResponse = {
-  workspace: Workspace
-}
-
-type SelectWorkspaceResponse = {
-  workspace: Workspace
 }
 
 type DeleteWorkspaceResponse = {
@@ -85,11 +73,9 @@ export async function listWorkspaces(
 }
 
 export async function getWorkspace(workspaceId: string): Promise<Workspace> {
-  const response = await apiRequest<WorkspaceDetailResponse>(`/workspaces/${workspaceId}`, {
+  return apiRequest<Workspace>(`/workspaces/${workspaceId}`, {
     method: "GET",
   })
-
-  return response.workspace
 }
 
 export async function createWorkspace(payload: CreateWorkspaceRequest): Promise<Workspace> {
@@ -102,12 +88,10 @@ export async function createWorkspace(payload: CreateWorkspaceRequest): Promise<
 }
 
 export async function updateWorkspace(workspaceId: string, payload: UpdateWorkspaceRequest): Promise<Workspace> {
-  const response = await apiRequest<UpdateWorkspaceResponse, UpdateWorkspaceRequest>(`/workspaces/${workspaceId}`, {
+  return apiRequest<Workspace, UpdateWorkspaceRequest>(`/workspaces/${workspaceId}`, {
     method: "PATCH",
     body: payload,
   })
-
-  return response.workspace
 }
 
 export async function deleteWorkspace(workspaceId: string): Promise<DeleteWorkspaceResponse> {
@@ -160,24 +144,9 @@ export async function getWorkspaceProject(workspaceId: string, projectId: string
 }
 
 export async function selectWorkspace(workspaceId: string): Promise<Workspace> {
-  const response = await apiRequest<SelectWorkspaceResponse>(`/workspaces/${workspaceId}/select`, {
+  return apiRequest<Workspace>(`/workspaces/${workspaceId}/select`, {
     method: "PATCH",
   })
-
-  return response.workspace
-}
-
-export async function inviteWorkspaceMember(
-  workspaceId: string,
-  payload: { email: string; role: string }
-): Promise<WorkspaceMember> {
-  return apiRequest<WorkspaceMember, { workspaceId: string; email: string; role: string }>(
-    `/workspaces/${workspaceId}/members`,
-    {
-      method: "POST",
-      body: { workspaceId, email: payload.email, role: payload.role },
-    }
-  )
 }
 
 export async function updateWorkspaceMemberRole(
@@ -198,4 +167,30 @@ export async function removeWorkspaceMember(workspaceId: string, memberId: strin
   return apiRequest<{ message: string }>(`/workspaces/${workspaceId}/members/${memberId}`, {
     method: "DELETE",
   })
+}
+
+export async function inviteWorkspaceMember(
+  workspaceId: string,
+  payload: { email: string; role: string }
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }, { workspaceId: string; email: string; role: string }>(
+    `/workspaces/${workspaceId}/members`,
+    {
+      method: "POST",
+      body: { workspaceId, ...payload },
+    }
+  )
+}
+
+export async function uploadWorkspaceLogo(
+  workspaceId: string,
+  payload: FormData
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }, FormData>(
+    `/workspaces/${workspaceId}/logo`,
+    {
+      method: "PUT",
+      body: payload,
+    }
+  )
 }

@@ -1,7 +1,8 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { appConfig } from "@/config"
 import { cn } from "@/lib/utils"
+import { useAuthStore } from "@/stores/auth.store"
 
 interface UserAvatarProps {
   userId: string | null | undefined
@@ -19,8 +20,16 @@ export function UserAvatar({
   fallbackClassName,
 }: UserAvatarProps) {
   const [imgFailed, setImgFailed] = useState(false)
+  const authUser = useAuthStore((state) => state.user)
   const initials = `${fname.slice(0, 1)}${lname.slice(0, 1)}`.toUpperCase() || "US"
-  const avatarUrl = userId ? `${appConfig.api.url}/auth/profile-image/${userId}` : ""
+  
+  const isCurrentUser = userId && authUser && userId === authUser.id
+  const cacheBuster = isCurrentUser && authUser.updatedAt ? `?v=${encodeURIComponent(authUser.updatedAt)}` : ""
+  const avatarUrl = userId ? `${appConfig.api.url}/auth/profile-image/${userId}${cacheBuster}` : ""
+
+  useEffect(() => {
+    setImgFailed(false)
+  }, [avatarUrl])
 
   return (
     <Avatar className={className}>

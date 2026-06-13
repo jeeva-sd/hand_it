@@ -1,20 +1,18 @@
-import { Controller, Delete, Get, HttpCode, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { WorkspaceRole } from '@prisma/client';
 import { RequestX } from '~/shared/types/request.type';
 import { Sanitize } from '~/system';
 import { JwtAuthGuard } from '../auth/strategies/jwt-auth.guard';
 import { RequireWorkspaceRoles, WorkspaceRoleGuard } from '../workspaces/workspace.guard';
 import {
-    InviteMemberInputType,
-    inviteMemberInput,
     ListMembersInputType,
     listMembersInput,
     MemberPathInputType,
     memberPathInput,
     UpdateMemberInputType,
     updateMemberInput,
-    WorkspaceMemberPathInputType,
-    workspaceMemberPathInput
+    InviteMemberInputType,
+    inviteMemberInput
 } from './schemas';
 import { WorkspaceMembersService } from './workspace-members.service';
 
@@ -29,14 +27,6 @@ export class WorkspaceMembersController {
     @Sanitize(listMembersInput)
     async listMembers(@Req() request: RequestX<ListMembersInputType>) {
         return this.workspaceMembersService.listMembers(request.payload);
-    }
-
-    @Post()
-    @UseGuards(WorkspaceRoleGuard)
-    @RequireWorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
-    @Sanitize(inviteMemberInput)
-    async inviteMember(@Req() request: RequestX<InviteMemberInputType>) {
-        return this.workspaceMembersService.inviteMember(request.payload);
     }
 
     @Patch(':memberId')
@@ -55,17 +45,11 @@ export class WorkspaceMembersController {
         return this.workspaceMembersService.removeMember(request.payload);
     }
 
-    @Post('accept')
-    @HttpCode(200)
-    @Sanitize(workspaceMemberPathInput)
-    async acceptInvite(@Req() request: RequestX<WorkspaceMemberPathInputType>) {
-        return this.workspaceMembersService.acceptInvite(request.payload);
-    }
-
-    @Post('decline')
-    @HttpCode(200)
-    @Sanitize(workspaceMemberPathInput)
-    async declineInvite(@Req() request: RequestX<WorkspaceMemberPathInputType>) {
-        return this.workspaceMembersService.declineInvite(request.payload);
+    @Post()
+    @UseGuards(WorkspaceRoleGuard)
+    @RequireWorkspaceRoles(WorkspaceRole.OWNER, WorkspaceRole.ADMIN)
+    @Sanitize(inviteMemberInput)
+    async inviteMember(@Req() request: RequestX<InviteMemberInputType>) {
+        return this.workspaceMembersService.inviteMember(request.payload);
     }
 }

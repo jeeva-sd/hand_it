@@ -41,7 +41,7 @@ export function ProjectsPage() {
 
   if (isError) {
     return (
-      <div className="mx-auto max-w-7xl px-8 py-10 text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl">
+      <div className="mx-auto max-w-7xl px-8 py-10 text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg">
         Unable to load projects. Please refresh and try again.
       </div>
     )
@@ -112,7 +112,7 @@ export function ProjectsPage() {
       </div>
 
       {filtered.length === 0 && (
-        <div className="rounded-xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground bg-card">
+        <div className="rounded-lg border border-dashed border-border p-10 text-center text-sm text-muted-foreground bg-card">
           No projects found.
         </div>
       )}
@@ -122,7 +122,7 @@ export function ProjectsPage() {
           {filtered.map((p) => (
             <div
               key={p.id}
-              className="group rounded-xl border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-sm"
+              className="group rounded-lg border bg-card p-5 transition-all hover:border-primary/30 hover:shadow-sm"
             >
               <div className="mb-4 flex items-start justify-between">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -156,7 +156,7 @@ export function ProjectsPage() {
           ))}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <div className="overflow-hidden rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
               <tr>

@@ -6,5 +6,3 @@ export type { MemberPathInputType } from './member-path';
 export { memberPathInput } from './member-path';
 export type { UpdateMemberInputType } from './update-member';
 export { updateMemberInput } from './update-member';
-export type { WorkspaceMemberPathInputType } from './workspace-member-path';
-export { workspaceMemberPathInput } from './workspace-member-path';

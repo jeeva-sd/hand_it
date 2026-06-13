@@ -20,7 +20,7 @@ export function MembersTable({
   onRemove,
 }: MembersTableProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border bg-card">
+    <div className="overflow-x-auto rounded-lg border bg-card">
       <table className="w-full min-w-[600px]">
         <thead className="border-b bg-muted/30 text-xs uppercase tracking-wide text-muted-foreground">
           <tr>

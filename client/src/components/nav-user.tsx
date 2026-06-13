@@ -143,7 +143,7 @@ export function NavUser({
             <DropdownMenuTrigger asChild>
               <SidebarMenuButton
                 size="lg"
-                className="h-10 rounded-xl data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                className="h-10 rounded-lg data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
                 <UserAvatar
                   userId={authUser?.id}
@@ -158,7 +158,7 @@ export function NavUser({
             </DropdownMenuTrigger>
 
             <DropdownMenuContent
-              className="min-w-56 rounded-xl border border-border p-1.5"
+              className="min-w-56 rounded-lg border border-border p-1.5"
               side={isMobile ? "bottom" : "right"}
               align="end"
               sideOffset={8}
@@ -224,7 +224,7 @@ export function NavUser({
           </SheetHeader>
 
           {/* Profile Picture Upload Section */}
-          <div className="flex flex-col items-center gap-4 py-8 bg-muted/20 rounded-2xl border border-dashed border-border/80 mt-6">
+          <div className="flex flex-col items-center gap-4 py-8 bg-muted/20 rounded-lg border border-dashed border-border/80 mt-6">
             <div className="relative group cursor-pointer" onClick={triggerFileSelect}>
               <UserAvatar
                 userId={authUser?.id}
@@ -281,7 +281,7 @@ export function NavUser({
                 onChange={(e) => setFname(e.target.value)}
                 placeholder="First name"
                 required
-                className="h-10 rounded-xl"
+                className="h-10 rounded-lg"
               />
             </div>
 
@@ -295,7 +295,7 @@ export function NavUser({
                 onChange={(e) => setLname(e.target.value)}
                 placeholder="Last name"
                 required
-                className="h-10 rounded-xl"
+                className="h-10 rounded-lg"
               />
             </div>
 
@@ -307,7 +307,7 @@ export function NavUser({
                 id="email"
                 value={user.email}
                 disabled
-                className="h-10 rounded-xl bg-muted/60 border-border/80 cursor-not-allowed text-muted-foreground"
+                className="h-10 rounded-lg bg-muted/60 border-border/80 cursor-not-allowed text-muted-foreground"
               />
               <p className="text-[11px] text-muted-foreground">
                 Email address cannot be changed.
@@ -315,13 +315,13 @@ export function NavUser({
             </div>
 
             {errorMsg && (
-              <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 border border-red-200/80 p-2.5 rounded-xl font-medium animate-in fade-in-0 duration-200">
+              <p className="text-xs text-red-600 bg-red-50 dark:bg-red-950/20 border border-red-200/80 p-2.5 rounded-lg font-medium animate-in fade-in-0 duration-200">
                 {errorMsg}
               </p>
             )}
 
             {successMsg && (
-              <p className="text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/80 p-2.5 rounded-xl font-medium animate-in fade-in-0 duration-200">
+              <p className="text-xs text-emerald-600 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/80 p-2.5 rounded-lg font-medium animate-in fade-in-0 duration-200">
                 {successMsg}
               </p>
             )}
@@ -329,7 +329,7 @@ export function NavUser({
             <Button
               type="submit"
               disabled={updateDetailsMutation.isPending || uploadImageMutation.isPending}
-              className="w-full rounded-xl h-10 mt-2 font-medium"
+              className="w-full rounded-lg h-10 mt-2 font-medium"
             >
               {updateDetailsMutation.isPending ? (
                 <>

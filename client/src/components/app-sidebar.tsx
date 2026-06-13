@@ -6,7 +6,6 @@ import {
   Plus,
   Users,
   Settings,
-  Building2,
   Search,
   Bell,
   Palette,
@@ -27,13 +26,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { UserAvatar } from "@/components/user-avatar"
+import { WorkspaceAvatar } from "@/components/workspace-avatar"
 import { useAuthStore } from "@/stores/auth.store"
 import { cn } from "@/lib/utils"
+import { ProfileSheet } from "@/components/profile-sheet"
 
 type WorkspaceItem = {
   id: string
   name: string
   plan: string
+  logoUrl?: string | null
+  updatedAt?: string
 }
 
 type SidebarProject = {
@@ -136,9 +139,9 @@ export function AppSidebar({
   favorites: SidebarProject[]
   onLinkClick?: () => void
 }) {
+  const [isProfileOpen, setIsProfileOpen] = React.useState(false)
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
   const authUser = useAuthStore((state) => state.user)
-  const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "HI"
 
   const workspaceHomePath = activeWorkspaceId ? `/w/${activeWorkspaceId}` : "/"
   const workspaceProjectsPath = activeWorkspaceId ? `/w/${activeWorkspaceId}/projects` : "/projects"
@@ -150,15 +153,19 @@ export function AppSidebar({
       <div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-sidebar-accent">
-              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-[11px] font-semibold">
-                {workspaceInitials}
-              </div>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-sidebar-accent cursor-pointer">
+              <WorkspaceAvatar
+                name={activeWorkspace?.name || "Select Workspace"}
+                logoUrl={activeWorkspace?.logoUrl}
+                updatedAt={activeWorkspace?.updatedAt}
+                className="h-6 w-6 rounded"
+                fallbackClassName="text-[11px] font-semibold bg-primary text-primary-foreground"
+              />
               <span className="flex-1 text-left truncate">{activeWorkspace?.name || "Select Workspace"}</span>
               <ChevronDown className="h-4 w-4 opacity-60" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-56 rounded-xl border border-border p-1.5">
+          <DropdownMenuContent align="start" className="w-56 rounded-lg border border-border p-1.5">
             <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
             <DropdownMenuSeparator />
             {workspaces.map((workspace) => (
@@ -168,14 +175,20 @@ export function AppSidebar({
                   onWorkspaceChange(workspace.id)
                   onLinkClick?.()
                 }}
-                className="rounded-lg px-2 py-2"
+                className="rounded-lg px-2 py-2 cursor-pointer"
               >
-                <Building2 className="h-4 w-4 mr-2" />
+                <WorkspaceAvatar
+                  name={workspace.name}
+                  logoUrl={workspace.logoUrl}
+                  updatedAt={workspace.updatedAt}
+                  className="h-4 w-4 rounded mr-2"
+                  fallbackClassName="text-[8px] font-semibold bg-primary text-primary-foreground"
+                />
                 <span className="truncate">{workspace.name}</span>
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onCreateWorkspace} className="rounded-lg px-2 py-2">
+            <DropdownMenuItem onClick={onCreateWorkspace} className="rounded-lg px-2 py-2 cursor-pointer">
               <Plus className="h-4 w-4 mr-2" /> New workspace
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -232,13 +245,16 @@ export function AppSidebar({
               <ChevronDown className="h-4 w-4 opacity-60" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-60 p-1.5 rounded-xl border border-border">
+          <DropdownMenuContent side="top" align="start" className="w-60 p-1.5 rounded-lg border border-border">
             <div className="px-2 py-2">
               <div className="text-sm font-medium truncate">{user.name}</div>
               <div className="text-xs text-muted-foreground truncate">{user.email}</div>
             </div>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><UserIcon className="mr-2 h-4 w-4 opacity-70" /> Profile</DropdownMenuItem>
+            <DropdownMenuItem className="rounded-lg" onClick={() => {
+              setIsProfileOpen(true)
+              onLinkClick?.()
+            }}><UserIcon className="mr-2 h-4 w-4 opacity-70" /> Profile</DropdownMenuItem>
             <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Bell className="mr-2 h-4 w-4 opacity-70" /> Notifications</DropdownMenuItem>
             <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Palette className="mr-2 h-4 w-4 opacity-70" /> Theme</DropdownMenuItem>
             <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Keyboard className="mr-2 h-4 w-4 opacity-70" /> Keyboard Shortcuts</DropdownMenuItem>
@@ -249,6 +265,8 @@ export function AppSidebar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </aside>
   )
 }

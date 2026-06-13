@@ -7,29 +7,56 @@ import {
 } from '@nestjs/common';
 import { WorkspaceMemberStatus, WorkspacePlan, WorkspaceRole } from '@prisma/client';
 import { ClsService } from 'nestjs-cls';
+import { PrismaService } from '~/integrations';
 import { Store } from '~/shared/types/store.type';
 import { WorkspaceSummary } from '../workspaces/workspace.service';
 import { WorkspaceCacheService } from '../workspaces/workspace-cache.service';
 import {
-    InviteMemberInputType,
     ListMembersInputType,
     MemberPathInputType,
-    UpdateMemberInputType,
-    WorkspaceMemberPathInputType
+    UpdateMemberInputType
 } from './schemas';
-import { WorkspaceInvitationService } from './workspace-invitation.service';
 import { WorkspaceMembersRepository } from './workspace-members.repository';
 import { WorkspaceMembersCacheService } from './workspace-members-cache.service';
+import { WorkspaceInvitationService } from './workspace-invitation.service';
 
 @Injectable()
 export class WorkspaceMembersService {
     constructor(
+        private readonly prisma: PrismaService,
         private readonly repository: WorkspaceMembersRepository,
         private readonly cache: WorkspaceMembersCacheService,
         private readonly workspaceCache: WorkspaceCacheService,
-        private readonly invitationService: WorkspaceInvitationService,
-        private readonly cls: ClsService<Store>
+        private readonly cls: ClsService<Store>,
+        private readonly invitationService: WorkspaceInvitationService
     ) { }
+
+    async inviteMember(payload: any) {
+        const { workspaceId, email, role } = payload;
+        await this.assertProWorkspace(workspaceId);
+
+        // Fetch workspace name
+        const dbWorkspace = await this.repository.findWorkspaceById(workspaceId);
+        if (!dbWorkspace) {
+            throw new NotFoundException('Workspace not found');
+        }
+
+        // Fetch inviter user profile/name
+        const inviterId = this.userId;
+        const inviter = await this.prisma.user.findUnique({
+            where: { id: inviterId },
+            select: { fname: true, lname: true }
+        });
+        const inviterName = inviter ? `${inviter.fname} ${inviter.lname}`.trim() : 'Someone';
+
+        return this.invitationService.inviteMember({
+            workspaceId,
+            email,
+            role,
+            inviterName,
+            workspaceName: dbWorkspace.name
+        });
+    }
 
     private get userId(): string {
         const userId = this.cls.get('userId');
@@ -80,49 +107,6 @@ export class WorkspaceMembersService {
         this.cache.setList(workspaceId, payload, result);
 
         return result;
-    }
-
-    async inviteMember(payload: InviteMemberInputType) {
-        const currentUserId = this.userId;
-        const workspaceId = payload.workspaceId;
-        await this.assertProWorkspace(workspaceId);
-
-        // Try getting workspace name from cache first
-        let workspaceName: string;
-        const cachedWorkspace = this.workspaceCache.getDetail<WorkspaceSummary>(workspaceId);
-        if (cachedWorkspace) {
-            workspaceName = cachedWorkspace.name;
-        } else {
-            const dbWorkspace = await this.repository.findWorkspaceById(workspaceId);
-            if (!dbWorkspace) {
-                throw new NotFoundException('Workspace not found');
-            }
-            workspaceName = dbWorkspace.name;
-        }
-
-        // Try getting inviter info from request CLS cache first
-        let inviter = this.cls.get('user') as { id: string; fname: string } | undefined;
-        if (!inviter) {
-            const dbInviter = await this.repository.findUserById(currentUserId);
-            if (!dbInviter) {
-                throw new UnauthorizedException('Unauthorized');
-            }
-            inviter = dbInviter;
-            this.cls.set('user', inviter);
-        }
-
-        await this.invitationService.inviteMember({
-            workspaceId,
-            workspaceName,
-            email: payload.email,
-            role: payload.role,
-            inviterName: inviter.fname
-        });
-
-        this.cache.invalidateList(workspaceId);
-        this.workspaceCache.invalidateDetail(workspaceId);
-
-        return { message: 'Invitation sent successfully' };
     }
 
     async updateMemberRole(payload: UpdateMemberInputType) {
@@ -181,41 +165,5 @@ export class WorkspaceMembersService {
         return { message: 'Member removed successfully' };
     }
 
-    async acceptInvite(payload: WorkspaceMemberPathInputType) {
-        const userId = this.userId;
-        const workspaceId = payload.workspaceId;
-
-        const member = await this.repository.findMemberByWorkspaceAndUser(workspaceId, userId);
-        if (!member || member.status !== WorkspaceMemberStatus.INVITED) {
-            throw new NotFoundException('Invitation not found');
-        }
-
-        await this.repository.updateStatus(member.id, WorkspaceMemberStatus.ACTIVE);
-
-        this.cache.invalidateList(workspaceId);
-        this.workspaceCache.invalidateRole(workspaceId, userId);
-        this.workspaceCache.invalidateLists([userId]);
-        this.workspaceCache.invalidateDetail(workspaceId);
-
-        return { message: 'Invitation accepted successfully' };
-    }
-
-    async declineInvite(payload: WorkspaceMemberPathInputType) {
-        const userId = this.userId;
-        const workspaceId = payload.workspaceId;
-
-        const member = await this.repository.findMemberByWorkspaceAndUser(workspaceId, userId);
-        if (!member || member.status !== WorkspaceMemberStatus.INVITED) {
-            throw new NotFoundException('Invitation not found');
-        }
-
-        await this.repository.updateStatus(member.id, WorkspaceMemberStatus.DECLINED);
-
-        this.cache.invalidateList(workspaceId);
-        this.workspaceCache.invalidateRole(workspaceId, userId);
-        this.workspaceCache.invalidateLists([userId]);
-        this.workspaceCache.invalidateDetail(workspaceId);
-
-        return { message: 'Invitation declined successfully' };
-    }
 }
+

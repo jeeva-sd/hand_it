@@ -149,3 +149,4 @@ model ProjectFavorite {
   @@index([userId], map: "idx_project_favorite_user")
   @@map("project_favorites")
 }
+

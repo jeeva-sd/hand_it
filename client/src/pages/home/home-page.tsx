@@ -34,19 +34,19 @@ export function HomePage() {
       {/* Summary Stats */}
       <section className="mb-12">
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-lg border bg-card p-4">
             <div className="text-xs text-muted-foreground">Projects</div>
             <div className="mt-1 text-xl font-semibold tracking-tight">{projects.length}</div>
           </div>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-lg border bg-card p-4">
             <div className="text-xs text-muted-foreground">Members</div>
             <div className="mt-1 text-xl font-semibold tracking-tight">{members.length}</div>
           </div>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-lg border bg-card p-4">
             <div className="text-xs text-muted-foreground">Favorites</div>
             <div className="mt-1 text-xl font-semibold tracking-tight">{favorites.length}</div>
           </div>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-lg border bg-card p-4">
             <div className="text-xs text-muted-foreground">Plan</div>
             <div className="mt-1 text-xl font-semibold tracking-tight capitalize">{workspace?.plan?.toLowerCase()}</div>
           </div>
@@ -56,7 +56,7 @@ export function HomePage() {
       {/* Needs Attention */}
       <section className="mb-12">
         <h2 className="text-sm font-semibold mb-3">Needs attention</h2>
-        <div className="flex items-center gap-3 rounded-xl border bg-card px-5 py-6 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 rounded-lg border bg-card px-5 py-6 text-sm text-muted-foreground">
           <CheckCircle className="h-4 w-4 text-emerald-500 shrink-0" />
           <span>Everything looks good. No action required.</span>
         </div>
@@ -66,7 +66,7 @@ export function HomePage() {
       <section className="mb-12">
         <h2 className="text-sm font-semibold mb-3">Favorite projects</h2>
         {favorites.length === 0 ? (
-          <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
             No favorite projects. Mark projects with star to show them here.
           </div>
         ) : (
@@ -75,7 +75,7 @@ export function HomePage() {
               <Link
                 key={p.id}
                 to={`/w/${workspaceId}/projects`}
-                className="group rounded-xl border bg-card p-4 transition-colors hover:border-primary/30"
+                className="group rounded-lg border bg-card p-4 transition-colors hover:border-primary/30"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 truncate">

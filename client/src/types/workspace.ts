@@ -5,6 +5,8 @@ export type Workspace = {
   name: string
   plan: WorkspacePlan
   memberCount: number
+  logoUrl?: string | null
+  updatedAt?: string
 }
 
 export type WorkspaceMemberRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER"

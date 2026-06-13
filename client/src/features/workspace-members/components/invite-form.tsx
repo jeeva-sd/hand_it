@@ -1,118 +1,91 @@
-import { useState } from "react"
-import { Mail } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import React, { useState } from "react"
+import { useInviteMemberMutation } from "../queries"
+import { toast } from "@/stores/toast.store"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { useInviteMemberMutation } from "../queries"
-import { type AppRole, roleMapToBackend } from "../types"
-import { resolveApiError } from "@/services/http.service"
+} from "@/components/ui/select"
 
-interface InviteMemberFormProps {
+type InviteFormProps = {
   workspaceId: string
-  workspaceName: string
-  isFreePlan: boolean
-  onSuccess: (message: string) => void
-  onError: (message: string) => void
 }
 
-export function InviteMemberForm({
-  workspaceId,
-  workspaceName,
-  isFreePlan,
-  onSuccess,
-  onError,
-}: InviteMemberFormProps) {
+export function InviteForm({ workspaceId }: InviteFormProps) {
   const [email, setEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState<AppRole>("Member")
+  const [role, setRole] = useState("MEMBER")
 
   const inviteMutation = useInviteMemberMutation(
     workspaceId,
     () => {
+      toast.success(`Successfully invited ${email}`)
       setEmail("")
-      onSuccess("Invitation sent successfully.")
     },
-    (err) => {
-      onError(resolveApiError(err, "Failed to send invitation. Please try again."))
+    (err: any) => {
+      toast.error(err?.message || "Failed to send invitation. Please try again.")
     }
   )
 
-  const handleInvite = () => {
-    if (isFreePlan) return
-
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail) {
-      onError("Please enter an email address.")
-      return
-    }
-
-    // Client-side email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(trimmedEmail)) {
-      onError("Please enter a valid email address.")
-      return
-    }
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
 
     inviteMutation.mutate({
-      email: trimmedEmail,
-      role: roleMapToBackend[inviteRole],
+      email: email.trim(),
+      role,
     })
   }
 
   return (
-    <section className="mb-8 rounded-xl border bg-card p-5">
-      <h2 className="text-sm font-semibold">Invite a teammate</h2>
-      <p className="mt-1 text-xs text-muted-foreground">
-        They'll get an email to join {workspaceName} and can start uploading right away.
+    <div className="bg-card border rounded-lg p-6 mb-6">
+      <h3 className="text-lg font-semibold mb-2">Invite new member</h3>
+      <p className="text-sm text-muted-foreground mb-4">
+        Invited users will receive an email invitation to join your workspace.
       </p>
-      <div className="mt-4 flex flex-col sm:flex-row gap-2">
-        <Input
-          type="email"
-          placeholder="name@company.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              handleInvite()
-            }
-          }}
-          className="flex-1 text-sm h-9 focus-visible:ring-1"
-          disabled={isFreePlan || inviteMutation.isPending}
-        />
-        <Select
-          value={inviteRole}
-          onValueChange={(value) => setInviteRole(value as AppRole)}
-          disabled={isFreePlan || inviteMutation.isPending}
-        >
-          <SelectTrigger className="h-9 sm:w-32">
-            <SelectValue placeholder="Select role" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Member">Member</SelectItem>
-            <SelectItem value="Admin">Admin</SelectItem>
-          </SelectContent>
-        </Select>
-        <Button
-          onClick={handleInvite}
-          disabled={isFreePlan || inviteMutation.isPending}
-          size="sm"
-          className="h-9 shrink-0"
-        >
-          {inviteMutation.isPending ? (
-            "Sending..."
-          ) : (
-            <>
-              <Mail className="h-4 w-4 mr-2" /> Send invite
-            </>
-          )}
-        </Button>
-      </div>
-    </section>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-end gap-4">
+          <div className="flex-1">
+            <label htmlFor="email" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              placeholder="name@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full h-10 bg-background border border-input rounded-md px-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-colors text-sm"
+            />
+          </div>
+
+          <div className="w-full md:w-48">
+            <label htmlFor="role" className="block text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+              Role
+            </label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger id="role" className="w-full !h-10 bg-background border border-input rounded-md px-4 text-foreground text-sm cursor-pointer flex justify-between items-center">
+                <SelectValue placeholder="Select role" />
+              </SelectTrigger>
+              <SelectContent position="popper">
+                <SelectItem value="MEMBER">Member</SelectItem>
+                <SelectItem value="ADMIN">Admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <button
+            type="submit"
+            disabled={inviteMutation.isPending}
+            className="w-full md:w-auto h-10 px-6 bg-primary hover:bg-primary/90 disabled:opacity-50 text-primary-foreground font-medium rounded-md text-sm transition-colors cursor-pointer"
+          >
+            {inviteMutation.isPending ? "Sending..." : "Send Invite"}
+          </button>
+        </div>
+      </form>
+    </div>
   )
 }

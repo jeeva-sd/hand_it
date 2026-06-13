@@ -8,6 +8,8 @@ const generateWorkspaceId = init({ length: 10 });
 
 type CreateUserData = { fname: string; lname: string; email: string; status: UserStatus };
 
+type CreateUserOptions = { skipWorkspace?: boolean };
+
 type UpdateUserProfileData = { id: string; fname: string; lname: string };
 
 type MarkAuthTokensUsedByTypeData = { userId: string; type: AuthTokenType; usedAt: Date };
@@ -48,10 +50,8 @@ export class AuthRepository {
         return this.txHandler(transaction).user.findUnique({ where: { id: data.id } });
     }
 
-    async createUser(data: CreateUserData, transaction?: PrismaTransaction) {
+    async createUser(data: CreateUserData, transaction?: PrismaTransaction, options?: CreateUserOptions) {
         const execute = async (tx: PrismaClientLike) => {
-            const workspaceId = generateWorkspaceId();
-
             // Create user first without setting lastUsedWorkspaceId to prevent foreign key violation
             const user = await tx.user.create({
                 data: {
@@ -61,6 +61,13 @@ export class AuthRepository {
                     status: data.status
                 }
             });
+
+            // Skip workspace creation when inviting a user (workspace created on acceptance)
+            if (options?.skipWorkspace) {
+                return user;
+            }
+
+            const workspaceId = generateWorkspaceId();
 
             // Create workspace and owner membership
             await tx.workspace.create({
@@ -88,6 +95,29 @@ export class AuthRepository {
             return execute(transaction);
         }
         return this.prisma.$transaction(execute);
+    }
+
+    /**
+     * Creates a personal workspace for a user (FREE plan, 2 GB, user as OWNER).
+     * Used during invitation acceptance for users who were created without a workspace.
+     */
+    async createPersonalWorkspace(userId: string, workspaceName: string, transaction?: PrismaTransaction) {
+        const tx = this.txHandler(transaction);
+        const workspaceId = generateWorkspaceId();
+
+        await tx.workspace.create({
+            data: {
+                id: workspaceId,
+                name: workspaceName,
+                plan: WorkspacePlan.FREE,
+                storageLimitBytes: BigInt(2 * 1024 * 1024 * 1024),
+                members: {
+                    create: { userId, role: WorkspaceRole.OWNER, status: WorkspaceMemberStatus.ACTIVE }
+                }
+            }
+        });
+
+        return workspaceId;
     }
 
     async updateUserProfileImage(data: { id: string; profileMime: string | null }, transaction?: PrismaTransaction) {
@@ -161,7 +191,7 @@ export class AuthRepository {
         transaction?: PrismaTransaction
     ) {
         return this.txHandler(transaction).workspaceMember.findFirst({
-            where: { userId: data.userId },
+            where: { userId: data.userId, status: WorkspaceMemberStatus.ACTIVE },
             orderBy: [{ updatedAt: 'desc' }, { createdAt: 'desc' }],
             select: { workspaceId: true, role: true, workspace: { select: { id: true, name: true, plan: true } } }
         });
@@ -172,7 +202,7 @@ export class AuthRepository {
         transaction?: PrismaTransaction
     ) {
         return this.txHandler(transaction).workspaceMember.findFirst({
-            where: { userId: data.userId, workspaceId: data.workspaceId },
+            where: { userId: data.userId, workspaceId: data.workspaceId, status: WorkspaceMemberStatus.ACTIVE },
             select: { workspaceId: true, role: true, workspace: { select: { id: true, name: true, plan: true } } }
         });
     }

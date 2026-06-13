@@ -1,15 +1,18 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, type FormEvent, useEffect } from "react"
+import { useState, type FormEvent, useEffect, useRef, type ChangeEvent } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { appPaths } from "@/app/router/paths"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { ConfirmDialog } from "@/components/ui"
+import { WorkspaceAvatar } from "@/components/workspace-avatar"
 import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { ApiError } from "@/services/http.service"
-import { deleteWorkspace, selectWorkspace, updateWorkspace } from "@/services/workspace.service"
+import { deleteWorkspace, selectWorkspace, updateWorkspace, uploadWorkspaceLogo } from "@/services/workspace.service"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
+import { toast } from "@/stores/toast.store"
 import { cn } from "@/lib/utils"
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
@@ -38,24 +41,52 @@ export function SettingsPage() {
 
   const { data: workspace, isError: isWorkspaceError, isPending: isWorkspacePending } = useWorkspaceQuery(workspaceId)
 
-  // Local settings states matching the design UX switches
+  // Local settings states matching the active workspace model properties
   const [workspaceName, setWorkspaceName] = useState("")
-  const [subdomain, setSubdomain] = useState("")
-  const [requirePassword, setRequirePassword] = useState(false)
-  const [showBranding, setShowBranding] = useState(true)
-  const [notifyViews, setNotifyViews] = useState(true)
-  const [emailFeedback, setEmailFeedback] = useState(true)
-  const [weeklySummary, setWeeklySummary] = useState(false)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
-  const [message, setMessage] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (workspace) {
       setWorkspaceName(workspace.name)
-      setSubdomain(workspace.name.toLowerCase().replace(/[^a-z0-9]/g, "-"))
     }
   }, [workspace])
+
+  const uploadLogoMutation = useMutation({
+    mutationFn: (payload: FormData) => uploadWorkspaceLogo(workspaceId, payload),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+      await queryClient.invalidateQueries({ queryKey: ["workspace", workspaceId] })
+      toast.success("Workspace logo uploaded successfully.")
+    },
+    onError: (error) => {
+      toast.error(resolveErrorMessage(error, "Unable to upload workspace logo right now."))
+    },
+  })
+
+  const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 1 * 1024 * 1024) {
+      toast.error("File size must be less than 1MB.")
+      return
+    }
+
+    if (!["image/jpeg", "image/png"].includes(file.type)) {
+      toast.error("Only JPG and PNG formats are supported.")
+      return
+    }
+
+    const formData = new FormData()
+    formData.append("logo", file)
+    uploadLogoMutation.mutate(formData)
+  }
+
+  const triggerLogoSelect = () => {
+    fileInputRef.current?.click()
+  }
 
   const updateWorkspaceMutation = useMutation({
     mutationFn: (payload: { workspaceId: string; name: string }) =>
@@ -72,12 +103,10 @@ export function SettingsPage() {
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
       await queryClient.invalidateQueries({ queryKey: ["workspace", updated.id] })
-      setErrorMessage(null)
-      setMessage("Workspace settings updated successfully.")
+      toast.success("Workspace settings updated successfully.")
     },
     onError: (error) => {
-      setMessage(null)
-      setErrorMessage(resolveErrorMessage(error, "Unable to update workspace right now."))
+      toast.error(resolveErrorMessage(error, "Unable to update workspace right now."))
     },
   })
 
@@ -102,6 +131,7 @@ export function SettingsPage() {
       }
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
+      toast.success("Workspace deleted successfully.")
 
       navigate(
         remainingWorkspaces[0] ? appPaths.workspaceProjects(remainingWorkspaces[0].id) : appPaths.createWorkspace,
@@ -109,8 +139,7 @@ export function SettingsPage() {
       )
     },
     onError: (error) => {
-      setMessage(null)
-      setErrorMessage(resolveErrorMessage(error, "Unable to delete workspace right now."))
+      toast.error(resolveErrorMessage(error, "Unable to delete workspace right now."))
     },
   })
 
@@ -118,12 +147,9 @@ export function SettingsPage() {
     event.preventDefault()
     if (!workspace || !workspaceId) return
 
-    setMessage(null)
-    setErrorMessage(null)
-
     const normalizedName = workspaceName.trim()
     if (normalizedName.length < 2) {
-      setErrorMessage("Workspace name must be at least 2 characters long.")
+      toast.error("Workspace name must be at least 2 characters long.")
       return
     }
 
@@ -132,12 +158,11 @@ export function SettingsPage() {
 
   const handleDeleteWorkspace = () => {
     if (!workspace || !workspaceId) return
+    setIsDeleteModalOpen(true)
+  }
 
-    const confirmed = window.confirm(`Delete "${workspace.name}" workspace? This action cannot be undone.`)
-    if (!confirmed) return
-
-    setMessage(null)
-    setErrorMessage(null)
+  const handleConfirmDelete = () => {
+    if (!workspace || !workspaceId) return
     deleteWorkspaceMutation.mutate(workspaceId)
   }
 
@@ -166,8 +191,6 @@ export function SettingsPage() {
     )
   }
 
-  const workspaceInitials = workspace.name.slice(0, 2).toUpperCase()
-
   return (
     <div className="mx-auto max-w-3xl px-8 py-10">
       <header className="mb-8">
@@ -175,43 +198,38 @@ export function SettingsPage() {
         <p className="mt-1 text-sm text-muted-foreground">Workspace preferences, branding, and defaults.</p>
       </header>
 
-      {message && <p className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{message}</p>}
-      {errorMessage && <p className="mb-6 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">{errorMessage}</p>}
-
       <form onSubmit={handleSave}>
         <Section title="Workspace">
           <Field label="Workspace name">
             <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} required />
           </Field>
-          <Field label="Subdomain">
-            <div className="flex items-center gap-1">
-              <Input value={subdomain} onChange={(e) => setSubdomain(e.target.value)} className="rounded-r-none" />
-              <span className="rounded-md rounded-l-none border border-l-0 bg-muted px-3 py-2 text-sm text-muted-foreground">
-                .handit.app
-              </span>
-            </div>
-          </Field>
           <Field label="Workspace logo" hint="Shown on client-facing share pages.">
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold">
-                {workspaceInitials}
-              </div>
-              <Button type="button" variant="outline" size="sm">
-                Upload
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/png, image/jpeg"
+                onChange={handleLogoChange}
+              />
+              <WorkspaceAvatar
+                name={workspace.name}
+                logoUrl={workspace.logoUrl}
+                updatedAt={workspace.updatedAt}
+                className="h-12 w-12 border"
+                fallbackClassName="text-base font-semibold"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={triggerLogoSelect}
+                disabled={uploadLogoMutation.isPending}
+              >
+                {uploadLogoMutation.isPending ? "Uploading..." : "Upload"}
               </Button>
             </div>
           </Field>
-        </Section>
-
-        <Section title="Share defaults" hint="Applied to every new share link unless overridden.">
-          <Toggle label="Require password by default" checked={requirePassword} onChange={setRequirePassword} />
-          <Toggle label="Show your branding on share pages" checked={showBranding} onChange={setShowBranding} />
-          <Toggle label="Notify me when a client views a share" checked={notifyViews} onChange={setNotifyViews} />
-        </Section>
-
-        <Section title="Notifications">
-          <Toggle label="Email me when clients leave feedback" checked={emailFeedback} onChange={setEmailFeedback} />
-          <Toggle label="Weekly delivery summary" checked={weeklySummary} onChange={setWeeklySummary} />
         </Section>
 
         <div className="mt-6">
@@ -222,7 +240,7 @@ export function SettingsPage() {
       </form>
 
       <Section title="Danger zone" className="mt-12">
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+        <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5">
           <h3 className="text-sm font-semibold">Delete workspace</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Permanently delete this workspace and all projects, files, and shares.
@@ -239,6 +257,18 @@ export function SettingsPage() {
           </Button>
         </div>
       </Section>
+
+      <ConfirmDialog
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        title="Delete Workspace"
+        description={`Are you sure you want to delete the "${workspace?.name}" workspace? This action is permanent and cannot be undone.`}
+        confirmText="Delete Workspace"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        variant="destructive"
+        isLoading={deleteWorkspaceMutation.isPending}
+      />
     </div>
   )
 }
@@ -277,31 +307,4 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   )
 }
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
-      <span className="text-sm">{label}</span>
-      <Switch checked={checked} onChange={onChange} />
-    </div>
-  )
-}
 
-function Switch({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={cn(
-        "inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring",
-        checked ? "bg-primary" : "bg-input"
-      )}
-    >
-      <span
-        className={cn(
-          "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform",
-          checked ? "translate-x-4" : "translate-x-0"
-        )}
-      />
-    </button>
-  )
-}

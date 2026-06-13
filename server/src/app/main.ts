@@ -113,7 +113,17 @@ class App {
     async setupPlugins() {
         // Security plugins first (critical for security)
         if (appConfig.plugins.helmet.enabled) {
-            await this.app.register(fastifyHelmet, { crossOriginResourcePolicy: { policy: 'cross-origin' } }); // Adds security headers like CSP, HSTS, etc.
+            await this.app.register(fastifyHelmet, {
+                crossOriginResourcePolicy: { policy: 'cross-origin' },
+                contentSecurityPolicy: {
+                    directives: {
+                        defaultSrc: ["'self'"],
+                        scriptSrc: ["'self'", "'unsafe-inline'"],
+                        styleSrc: ["'self'", "'unsafe-inline'"],
+                        imgSrc: ["'self'", "data:", "blob:"]
+                    }
+                }
+            });
         }
 
         // Register core plugins in parallel where dependencies allow
@@ -229,7 +239,7 @@ class App {
 
     // Enable URI-based versioning using configuration
     setupVersioning() {
-        this.app.setGlobalPrefix(appConfig.server.routePrefix); // API route prefix
+        this.app.setGlobalPrefix(appConfig.server.routePrefix);
         this.app.enableVersioning({
             type: VersioningType.URI, // Use URI-based versioning
             defaultVersion: appConfig.server.version // Default API version

@@ -1,19 +1,21 @@
 import { useState, useEffect, useCallback } from "react"
 import { useParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
+import { ConfirmDialog } from "@/components/ui"
 import {
   useWorkspaceMembersInfiniteQuery,
   useUpdateMemberRoleMutation,
   useRemoveMemberMutation,
 } from "@/features/workspace-members/queries"
 import { RoleHintsSection } from "@/features/workspace-members/components/role-hints"
-import { InviteMemberForm } from "@/features/workspace-members/components/invite-form"
 import { MemberSearchInput } from "@/features/workspace-members/components/search-input"
 import { MembersTable } from "@/features/workspace-members/components/members-table"
+import { InviteForm } from "@/features/workspace-members/components/invite-form"
 import { type AppRole, roleMapToBackend } from "@/features/workspace-members/types"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceQuery } from "@/features/workspace/use-workspace-query"
 import { resolveApiError } from "@/services/http.service"
+import { toast } from "@/stores/toast.store"
 
 export function MembersPage() {
   const { workspaceId = "" } = useParams()
@@ -22,11 +24,9 @@ export function MembersPage() {
   // Fetch workspace details directly by ID (scale-safe, handles paginated lists gracefully)
   const { data: workspace } = useWorkspaceQuery(workspaceId)
   const isFreePlan = workspace?.plan?.toUpperCase() === "FREE"
-  const workspaceName = workspace?.name || "the workspace"
 
   const [debouncedSearch, setDebouncedSearch] = useState("")
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [memberToRemove, setMemberToRemove] = useState<{ id: string; name: string } | null>(null)
 
   // Fetch paginated member records in infinite scroll
   const {
@@ -71,56 +71,41 @@ export function MembersPage() {
   const updateRoleMutation = useUpdateMemberRoleMutation(
     workspaceId,
     () => {
-      setSuccessMessage("Member role updated successfully.")
-      setErrorMessage(null)
+      toast.success("Member role updated successfully.")
       void refetch()
     },
     (err) => {
-      setSuccessMessage(null)
-      setErrorMessage(resolveApiError(err, "Failed to update member role."))
+      toast.error(resolveApiError(err, "Failed to update member role."))
     }
   )
 
   const removeMemberMutation = useRemoveMemberMutation(
     workspaceId,
     () => {
-      setSuccessMessage("Member removed successfully.")
-      setErrorMessage(null)
+      toast.success("Member removed successfully.")
+      setMemberToRemove(null)
       void refetch()
     },
     (err) => {
-      setSuccessMessage(null)
-      setErrorMessage(resolveApiError(err, "Failed to remove member."))
+      toast.error(resolveApiError(err, "Failed to remove member."))
     }
   )
 
   // Callbacks wrapped in useCallback to prevent child row components from re-rendering
   const handleRoleChange = useCallback((memberId: string, role: AppRole) => {
     if (isFreePlan) return
-    setErrorMessage(null)
-    setSuccessMessage(null)
     updateRoleMutation.mutate({ memberId, role: roleMapToBackend[role] })
   }, [isFreePlan, updateRoleMutation])
 
   const handleRemove = useCallback((memberId: string, name: string) => {
     if (isFreePlan) return
-    const confirmed = window.confirm(`Remove ${name} from this workspace?`)
-    if (!confirmed) return
-    setErrorMessage(null)
-    setSuccessMessage(null)
-    removeMemberMutation.mutate(memberId)
-  }, [isFreePlan, removeMemberMutation])
+    setMemberToRemove({ id: memberId, name })
+  }, [isFreePlan])
 
-  const handleFormSuccess = useCallback((msg: string) => {
-    setSuccessMessage(msg)
-    setErrorMessage(null)
-    void refetch()
-  }, [refetch])
-
-  const handleFormError = useCallback((msg: string) => {
-    setSuccessMessage(null)
-    setErrorMessage(msg)
-  }, [])
+  const handleConfirmRemove = () => {
+    if (!memberToRemove) return
+    removeMemberMutation.mutate(memberToRemove.id)
+  }
 
   const handleSearchChange = useCallback((value: string) => {
     setDebouncedSearch(value)
@@ -158,16 +143,7 @@ export function MembersPage() {
         </p>
       )}
 
-      {successMessage && <p className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{successMessage}</p>}
-      {errorMessage && <p className="mb-6 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">{errorMessage}</p>}
-
-      <InviteMemberForm
-        workspaceId={workspaceId}
-        workspaceName={workspaceName}
-        isFreePlan={isFreePlan}
-        onSuccess={handleFormSuccess}
-        onError={handleFormError}
-      />
+      {!isFreePlan && <InviteForm workspaceId={workspaceId} />}
 
       <RoleHintsSection />
 
@@ -202,6 +178,24 @@ export function MembersPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setMemberToRemove(null)
+        }}
+        title="Remove member"
+        description={
+          memberToRemove
+            ? `Are you sure you want to remove ${memberToRemove.name} from this workspace?`
+            : ""
+        }
+        confirmText="Remove"
+        cancelText="Cancel"
+        onConfirm={handleConfirmRemove}
+        variant="destructive"
+        isLoading={removeMemberMutation.isPending}
+      />
     </div>
   )
 }

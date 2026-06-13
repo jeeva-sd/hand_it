@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workspace Invitation</title>
+    <title>You're Invited to a Workspace</title>
     <style>
         body {
             margin: 0;
@@ -76,20 +76,13 @@
     <div class="container">
         <div class="content">
             <p class="brand">Handit</p>
-            <h1>You've been invited!</h1>
-            <p>Hello,</p>
-            <p><strong>{{inviterName}}</strong> has invited you to join the <strong>{{workspaceName}}</strong> workspace on Handit.</p>
-            
-            {{#if isNewUser}}
-                <p>Since you don't have an account yet, please set up your account first:</p>
-                <a href="{{setupLink}}" class="button">Set Up Account</a>
-                <p class="muted">After setting up your account, you can accept the invitation.</p>
-            {{else}}
-                <a href="{{inviteLink}}" class="button">View Invitation</a>
-            {{/if}}
-            
+            <h1>You've been invited to {{workspaceName}}</h1>
+            <p>{{inviterName}} has invited you to join the <strong>{{workspaceName}}</strong> workspace on Handit.</p>
+            <p>Click the button below to view and respond to the invitation.</p>
+            <a href="{{inviteLink}}" class="button">View Invitation</a>
+            <p class="muted">This invitation link expires in 7 days.</p>
             <p class="muted">If the button does not work, use this link:</p>
-            <p><a class="link" href="{{#if isNewUser}}{{setupLink}}{{else}}{{inviteLink}}{{/if}}">{{#if isNewUser}}{{setupLink}}{{else}}{{inviteLink}}{{/if}}</a></p>
+            <p><a class="link" href="{{inviteLink}}">{{inviteLink}}</a></p>
             <p class="footer">Handit Team</p>
         </div>
     </div>

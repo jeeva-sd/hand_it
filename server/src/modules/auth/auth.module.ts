@@ -11,6 +11,7 @@ import { StrategyModule } from './strategies/strategy.module';
 @Module({
     imports: [StrategyModule, EventModule, DatabaseModule, EmailsModule, R2Module],
     controllers: [AuthController, GoogleAuthController],
-    providers: [AuthService, AuthRepository, JwtAuthGuard]
+    providers: [AuthService, AuthRepository, JwtAuthGuard],
+    exports: [AuthService, AuthRepository]
 })
 export class AuthModule {}

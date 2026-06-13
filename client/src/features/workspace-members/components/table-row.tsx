@@ -75,13 +75,17 @@ export const MemberRow = React.memo(({
         <span
           className={cn(
             "inline-flex items-center gap-1.5 text-xs",
-            appStatus === "Active" ? "text-success" : "text-muted-foreground",
+            appStatus === "Active" && "text-success",
+            appStatus === "Declined" && "text-destructive",
+            appStatus !== "Active" && appStatus !== "Declined" && "text-muted-foreground",
           )}
         >
           <span
             className={cn(
               "h-1.5 w-1.5 rounded-full",
-              appStatus === "Active" ? "bg-success" : "bg-muted-foreground",
+              appStatus === "Active" && "bg-success",
+              appStatus === "Declined" && "bg-destructive",
+              appStatus !== "Active" && appStatus !== "Declined" && "bg-muted-foreground",
             )}
           />
           {appStatus}

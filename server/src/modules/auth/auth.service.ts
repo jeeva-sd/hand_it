@@ -644,13 +644,13 @@ export class AuthService {
         return createHash('sha256').update(rawToken).digest('hex');
     }
 
-    private async hashPassword(password: string): Promise<string> {
+    async hashPassword(password: string): Promise<string> {
         const salt = randomBytes(PASSWORD_HASH_SALT_BYTES).toString('hex');
         const keyBuffer = (await scryptAsync(password, salt, PASSWORD_HASH_KEY_LENGTH)) as Buffer;
         return `${salt}:${keyBuffer.toString('hex')}`;
     }
 
-    private async verifyPassword(password: string, hash: string): Promise<boolean> {
+    async verifyPassword(password: string, hash: string): Promise<boolean> {
         const [salt, key] = hash.split(':');
 
         if (!(salt && key)) {
