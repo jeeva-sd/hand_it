@@ -9,10 +9,13 @@ export type Workspace = {
 
 export type WorkspaceMemberRole = "OWNER" | "ADMIN" | "MEMBER" | "VIEWER"
 
+export type WorkspaceMemberStatus = "INVITED" | "ACTIVE" | "DECLINED" | "DELETED"
+
 export type WorkspaceMember = {
   id: string
   userId: string
   role: WorkspaceMemberRole
+  status: WorkspaceMemberStatus
   joinedAt: string
   updatedAt: string
   user: {

@@ -1,8 +1,23 @@
 import * as React from "react"
-
-import { appPaths } from "@/app/router/paths"
-import { NavUser } from "@/components/nav-user"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Link, useLocation } from "react-router-dom"
+import {
+  ChevronDown,
+  FolderOpen,
+  Plus,
+  Users,
+  Settings,
+  Building2,
+  Search,
+  Bell,
+  Palette,
+  Keyboard,
+  LogOut,
+  User as UserIcon,
+  Home,
+  Inbox,
+  Link2,
+  ClipboardList,
+} from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,32 +26,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarRail,
-} from "@/components/ui/sidebar"
-import {
-  ChevronDownIcon,
-  ChevronRightIcon,
-  Clock3Icon,
-  CreditCardIcon,
-  FolderIcon,
-  PlusIcon,
-  SettingsIcon,
-  StarIcon,
-  UsersIcon,
-} from "lucide-react"
-import { Link, useLocation } from "react-router-dom"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { cn } from "@/lib/utils"
 
 type WorkspaceItem = {
   id: string
@@ -56,10 +47,73 @@ type SidebarUser = {
   avatar: string
 }
 
-function isProjectLinkActive(pathname: string, projectPath: string): boolean {
-  const projectBasePath = projectPath.replace(/\/files$/, "")
+function NavLink({
+  to,
+  icon: Icon,
+  children,
+  exact,
+  badge,
+  onClick,
+}: {
+  to: string
+  icon: React.ComponentType<{ className?: string }>
+  children: React.ReactNode
+  exact?: boolean
+  badge?: number
+  onClick?: () => void
+}) {
+  const location = useLocation()
+  const path = location.pathname
+  const active = exact ? path === to : path === to || path.startsWith(to + "/")
 
-  return pathname === projectBasePath || pathname.startsWith(`${projectBasePath}/`)
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className={cn(
+        "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+        active
+          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <Icon className="h-4 w-4 shrink-0 opacity-70" />
+      <span className="flex-1 truncate">{children}</span>
+      {badge ? (
+        <span className="rounded-full bg-primary px-1.5 text-[10px] font-medium text-primary-foreground">
+          {badge}
+        </span>
+      ) : null}
+    </Link>
+  )
+}
+
+function ProjectLink({ name, url, onClick }: { name: string; url: string; onClick?: () => void }) {
+  const location = useLocation()
+  const active = location.pathname === url
+  return (
+    <Link
+      to={url}
+      onClick={onClick}
+      className={cn(
+        "group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors",
+        active
+          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+          : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      )}
+    >
+      <span className="w-4 text-center text-xs">★</span>
+      <span className="truncate">{name}</span>
+    </Link>
+  )
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-2 pb-1 pt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground/70">
+      {children}
+    </div>
+  )
 }
 
 export function AppSidebar({
@@ -70,9 +124,8 @@ export function AppSidebar({
   activeWorkspaceId,
   onWorkspaceChange,
   favorites,
-  recentProjects,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & {
+  onLinkClick,
+}: {
   user: SidebarUser
   onSignOut: () => void
   onCreateWorkspace: () => void
@@ -80,204 +133,118 @@ export function AppSidebar({
   activeWorkspaceId: string
   onWorkspaceChange: (workspaceId: string) => void
   favorites: SidebarProject[]
-  recentProjects: SidebarProject[]
+  onLinkClick?: () => void
 }) {
-  const location = useLocation()
-
   const activeWorkspace = workspaces.find((workspace) => workspace.id === activeWorkspaceId)
-  const workspaceScopeId = activeWorkspace?.id || activeWorkspaceId || ""
+  const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "HI"
 
-  const workspaceProjectsPath = workspaceScopeId ? appPaths.workspaceProjects(workspaceScopeId) : "/projects"
-  const workspaceMembersPath = workspaceScopeId ? appPaths.workspaceMembers(workspaceScopeId) : "/settings/members"
-  const workspaceBillingPath = workspaceScopeId ? appPaths.workspaceBilling(workspaceScopeId) : "/settings/billing"
-  const workspaceSettingsPath = workspaceScopeId ? appPaths.workspaceSettings(workspaceScopeId) : "/settings"
-
-  const workspaceInitials = activeWorkspace?.name ? activeWorkspace.name.slice(0, 2).toUpperCase() : "--"
-  const isWorkspaceSettingsActive = /^\/w\/[^/]+\/settings(\/|$)/.test(location.pathname)
-  const isWorkspaceProjectsActive =
-    location.pathname === workspaceProjectsPath || location.pathname.startsWith(`${workspaceProjectsPath}/`)
-  const hasActiveFavorite = favorites.some((project) => isProjectLinkActive(location.pathname, project.url))
-  const hasActiveRecentProject = recentProjects.some((project) =>
-    isProjectLinkActive(location.pathname, project.url)
-  )
+  const workspaceHomePath = activeWorkspaceId ? `/w/${activeWorkspaceId}` : "/"
+  const workspaceProjectsPath = activeWorkspaceId ? `/w/${activeWorkspaceId}/projects` : "/projects"
+  const workspaceMembersPath = activeWorkspaceId ? `/w/${activeWorkspaceId}/settings/members` : "/settings/members"
+  const workspaceSettingsPath = activeWorkspaceId ? `/w/${activeWorkspaceId}/settings` : "/settings"
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="border-b border-sidebar-border/70 p-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton
-                  size="lg"
-                  className="h-10 rounded-xl bg-sidebar-accent/60 data-open:bg-sidebar-accent"
-                >
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <div className="flex size-7 items-center justify-center rounded-md bg-sidebar-primary text-[0.68rem] font-semibold text-sidebar-primary-foreground">
-                      {workspaceInitials}
-                    </div>
-                    <div className="min-w-0 text-left">
-                      <p className="truncate text-sm font-medium">{activeWorkspace?.name}</p>
-                    </div>
-                  </div>
-                  <ChevronDownIcon className="size-4 text-sidebar-foreground/70" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="min-w-56 rounded-xl border border-border p-1.5" align="start">
-                <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {workspaces.map((workspace) => (
-                  <DropdownMenuItem
-                    key={workspace.id}
-                    onClick={() => onWorkspaceChange(workspace.id)}
-                    className="rounded-lg px-2 py-2"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{workspace.name}</p>
-                      <p className="truncate text-xs text-muted-foreground">{workspace.plan} workspace</p>
-                    </div>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onCreateWorkspace} className="rounded-lg px-2 py-2">
-                  <PlusIcon className="size-4" />
-                  <span>Create workspace</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
+    <aside className="flex flex-col h-full w-full text-sidebar-foreground p-3 select-none">
+      <div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm font-medium hover:bg-sidebar-accent">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary text-primary-foreground text-[11px] font-semibold">
+                {workspaceInitials}
+              </div>
+              <span className="flex-1 text-left truncate">{activeWorkspace?.name || "Select Workspace"}</span>
+              <ChevronDown className="h-4 w-4 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-56 rounded-xl border border-border p-1.5">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">Workspaces</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            {workspaces.map((workspace) => (
+              <DropdownMenuItem
+                key={workspace.id}
+                onClick={() => {
+                  onWorkspaceChange(workspace.id)
+                  onLinkClick?.()
+                }}
+                className="rounded-lg px-2 py-2"
+              >
+                <Building2 className="h-4 w-4 mr-2" />
+                <span className="truncate">{workspace.name}</span>
+              </DropdownMenuItem>
+            ))}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onCreateWorkspace} className="rounded-lg px-2 py-2">
+              <Plus className="h-4 w-4 mr-2" /> New workspace
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-      <SidebarContent className="gap-1 px-1 py-2">
-        <SidebarGroup>
-          <SidebarMenu>
-            <Collapsible defaultOpen className="group/collapsible">
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton isActive={hasActiveFavorite}>
-                    <StarIcon className="size-4" />
-                    <span>Favorites</span>
-                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    {favorites.map((project) => (
-                      <SidebarMenuSubItem key={project.id}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={isProjectLinkActive(location.pathname, project.url)}
-                        >
-                          <Link to={project.url}>
-                            <span>{project.name}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                    {favorites.length === 0 && (
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton aria-disabled="true" className="text-sidebar-foreground/60">
-                          <span>No favorites yet</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    )}
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
+        <button onClick={onLinkClick} className="mt-2 flex w-full items-center gap-2 rounded-md border border-sidebar-border bg-background/60 px-2 py-1.5 text-xs text-muted-foreground hover:bg-sidebar-accent">
+          <Search className="h-3.5 w-3.5" />
+          <span className="flex-1 text-left">Search…</span>
+          <kbd className="rounded border bg-muted px-1 text-[10px] font-mono">⌘K</kbd>
+        </button>
+      </div>
 
-            <Collapsible defaultOpen className="group/collapsible">
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton isActive={hasActiveRecentProject || isWorkspaceProjectsActive}>
-                    <Clock3Icon className="size-4" />
-                    <span>Recent Projects</span>
-                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    {recentProjects.map((project) => (
-                      <SidebarMenuSubItem key={project.id}>
-                        <SidebarMenuSubButton
-                          asChild
-                          isActive={isProjectLinkActive(location.pathname, project.url)}
-                        >
-                          <Link to={project.url}>
-                            <span>{project.name}</span>
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    ))}
-                    {recentProjects.length === 0 && (
-                      <SidebarMenuSubItem>
-                        <SidebarMenuSubButton aria-disabled="true" className="text-sidebar-foreground/60">
-                          <span>No recent projects</span>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
-                    )}
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceProjectsPath}>
-                        <Link to={workspaceProjectsPath}>
-                          <FolderIcon className="size-4" />
-                          <span>All Projects</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
+      <div className="flex-1 overflow-y-auto mt-4 space-y-4">
+        <div className="space-y-0.5">
+          <NavLink to={workspaceHomePath} icon={Home} exact onClick={onLinkClick}>Home</NavLink>
+          <NavLink to="#" icon={Inbox} onClick={onLinkClick}>Inbox</NavLink>
+          <NavLink to={workspaceProjectsPath} icon={FolderOpen} exact onClick={onLinkClick}>All Projects</NavLink>
+          <NavLink to="#" icon={Link2} onClick={onLinkClick}>Shares</NavLink>
+          <NavLink to="#" icon={ClipboardList} onClick={onLinkClick}>Templates</NavLink>
+        </div>
 
-            <Collapsible defaultOpen className="group/collapsible">
-              <SidebarMenuItem>
-                <CollapsibleTrigger asChild>
-                  <SidebarMenuButton isActive={isWorkspaceSettingsActive}>
-                    <SettingsIcon className="size-4" />
-                    <span>Settings</span>
-                    <ChevronRightIcon className="ml-auto size-4 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
-                  </SidebarMenuButton>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <SidebarMenuSub>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceSettingsPath}>
-                        <Link to={workspaceSettingsPath}>
-                          <SettingsIcon className="size-4" />
-                          <span>General</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceMembersPath}>
-                        <Link to={workspaceMembersPath}>
-                          <UsersIcon className="size-4" />
-                          <span>Members</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                    <SidebarMenuSubItem>
-                      <SidebarMenuSubButton asChild isActive={location.pathname === workspaceBillingPath}>
-                        <Link to={workspaceBillingPath}>
-                          <CreditCardIcon className="size-4" />
-                          <span>Billing</span>
-                        </Link>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  </SidebarMenuSub>
-                </CollapsibleContent>
-              </SidebarMenuItem>
-            </Collapsible>
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
+        {favorites.length > 0 && (
+          <div>
+            <SectionLabel>Favorites</SectionLabel>
+            <div className="space-y-0.5">
+              {favorites.map((p) => (
+                <ProjectLink key={p.id} name={p.name} url={p.url} onClick={onLinkClick} />
+              ))}
+            </div>
+          </div>
+        )}
 
-      <SidebarFooter className="border-t border-sidebar-border/70 p-3">
-        <NavUser user={user} onSignOut={onSignOut} />
-      </SidebarFooter>
+        <div>
+          <SectionLabel>Workspace</SectionLabel>
+          <div className="space-y-0.5">
+            <NavLink to={workspaceMembersPath} icon={Users} exact onClick={onLinkClick}>Members</NavLink>
+            <NavLink to={workspaceSettingsPath} icon={Settings} exact onClick={onLinkClick}>Settings</NavLink>
+          </div>
+        </div>
+      </div>
 
-      <SidebarRail />
-    </Sidebar>
+      <div className="border-t pt-2 mt-auto">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-sidebar-accent">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                  {user.name ? user.name.slice(0, 2).toUpperCase() : "US"}
+                </AvatarFallback>
+              </Avatar>
+              <span className="flex-1 text-left font-medium truncate">{user.name}</span>
+              <ChevronDown className="h-4 w-4 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-60 p-1.5 rounded-xl border border-border">
+            <div className="px-2 py-2">
+              <div className="text-sm font-medium truncate">{user.name}</div>
+              <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><UserIcon className="mr-2 h-4 w-4 opacity-70" /> Profile</DropdownMenuItem>
+            <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Bell className="mr-2 h-4 w-4 opacity-70" /> Notifications</DropdownMenuItem>
+            <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Palette className="mr-2 h-4 w-4 opacity-70" /> Theme</DropdownMenuItem>
+            <DropdownMenuItem className="rounded-lg" onClick={onLinkClick}><Keyboard className="mr-2 h-4 w-4 opacity-70" /> Keyboard Shortcuts</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="rounded-lg text-destructive focus:text-destructive" onClick={onSignOut}>
+              <LogOut className="mr-2 h-4 w-4 opacity-70" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </aside>
   )
 }

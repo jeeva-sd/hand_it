@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { useState, type FormEvent } from "react"
+import { useState, type FormEvent, useEffect } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 
 import { appPaths } from "@/app/router/paths"
@@ -10,6 +10,7 @@ import { ApiError } from "@/services/http.service"
 import { deleteWorkspace, selectWorkspace, updateWorkspace } from "@/services/workspace.service"
 import { useAuthStore } from "@/stores/auth.store"
 import { useWorkspaceStore } from "@/stores/workspace.store"
+import { cn } from "@/lib/utils"
 
 function resolveErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof ApiError) {
@@ -34,54 +35,58 @@ export function SettingsPage() {
 
   const lastUsedWorkspace = useAuthStore((state) => state.lastUsedWorkspace)
   const setLastUsedWorkspace = useAuthStore((state) => state.setLastUsedWorkspace)
+
   const { data: workspace, isError: isWorkspaceError, isPending: isWorkspacePending } = useWorkspaceQuery(workspaceId)
 
-  const currentWorkspaceId = workspaceId
-  const [nameDraftByWorkspaceId, setNameDraftByWorkspaceId] = useState<Record<string, string>>({})
-  const [message, setMessage] = useState<{ workspaceId: string; text: string } | null>(null)
-  const [errorMessage, setErrorMessage] = useState<{ workspaceId: string; text: string } | null>(null)
+  // Local settings states matching the design UX switches
+  const [workspaceName, setWorkspaceName] = useState("")
+  const [subdomain, setSubdomain] = useState("")
+  const [requirePassword, setRequirePassword] = useState(false)
+  const [showBranding, setShowBranding] = useState(true)
+  const [notifyViews, setNotifyViews] = useState(true)
+  const [emailFeedback, setEmailFeedback] = useState(true)
+  const [weeklySummary, setWeeklySummary] = useState(false)
 
-  const name = currentWorkspaceId
-    ? (nameDraftByWorkspaceId[currentWorkspaceId] ?? workspace?.name ?? "")
-    : ""
+  const [message, setMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (workspace) {
+      setWorkspaceName(workspace.name)
+      setSubdomain(workspace.name.toLowerCase().replace(/[^a-z0-9]/g, "-"))
+    }
+  }, [workspace])
 
   const updateWorkspaceMutation = useMutation({
-    mutationFn: (payload: { workspaceId: string; name: string }) => updateWorkspace(payload.workspaceId, { name: payload.name }),
-    onSuccess: async (workspace) => {
-      upsertWorkspace(workspace)
-      setNameDraftByWorkspaceId((previous) => ({
-        ...previous,
-        [workspace.id]: workspace.name,
-      }))
-
-      if (lastUsedWorkspace?.id === workspace.id) {
+    mutationFn: (payload: { workspaceId: string; name: string }) =>
+      updateWorkspace(payload.workspaceId, { name: payload.name }),
+    onSuccess: async (updated) => {
+      upsertWorkspace(updated)
+      if (lastUsedWorkspace?.id === updated.id) {
         setLastUsedWorkspace({
           ...lastUsedWorkspace,
-          name: workspace.name,
-          plan: workspace.plan,
+          name: updated.name,
+          plan: updated.plan,
         })
       }
 
       await queryClient.invalidateQueries({ queryKey: ["workspaces"] })
-      await queryClient.invalidateQueries({ queryKey: ["workspace", workspace.id] })
+      await queryClient.invalidateQueries({ queryKey: ["workspace", updated.id] })
       setErrorMessage(null)
-      setMessage({ workspaceId: workspace.id, text: "Workspace updated successfully." })
+      setMessage("Workspace settings updated successfully.")
     },
     onError: (error) => {
       setMessage(null)
-      setErrorMessage({
-        workspaceId: currentWorkspaceId,
-        text: resolveErrorMessage(error, "Unable to update workspace right now."),
-      })
+      setErrorMessage(resolveErrorMessage(error, "Unable to update workspace right now."))
     },
   })
 
   const deleteWorkspaceMutation = useMutation({
-    mutationFn: (workspaceId: string) => deleteWorkspace(workspaceId),
-    onSuccess: async (_, workspaceId) => {
-      const remainingWorkspaces = workspaces.filter((workspace) => workspace.id !== workspaceId)
+    mutationFn: (id: string) => deleteWorkspace(id),
+    onSuccess: async (_, deletedId) => {
+      const remainingWorkspaces = workspaces.filter((w) => w.id !== deletedId)
 
-      removeWorkspace(workspaceId)
+      removeWorkspace(deletedId)
 
       if (remainingWorkspaces[0]) {
         setLastUsedWorkspace({
@@ -91,7 +96,6 @@ export function SettingsPage() {
           roleId: null,
           accessId: null,
         })
-
         void selectWorkspace(remainingWorkspaces[0].id).catch(() => undefined)
       } else {
         setLastUsedWorkspace(null)
@@ -106,144 +110,198 @@ export function SettingsPage() {
     },
     onError: (error) => {
       setMessage(null)
-      setErrorMessage({
-        workspaceId: currentWorkspaceId,
-        text: resolveErrorMessage(error, "Unable to delete workspace right now."),
-      })
+      setErrorMessage(resolveErrorMessage(error, "Unable to delete workspace right now."))
     },
   })
 
   const handleSave = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-
-    if (!workspace || !currentWorkspaceId) {
-      return
-    }
+    if (!workspace || !workspaceId) return
 
     setMessage(null)
     setErrorMessage(null)
 
-    const normalizedName = name.trim()
-
+    const normalizedName = workspaceName.trim()
     if (normalizedName.length < 2) {
-      setErrorMessage({
-        workspaceId: currentWorkspaceId,
-        text: "Workspace name must be at least 2 characters long.",
-      })
+      setErrorMessage("Workspace name must be at least 2 characters long.")
       return
     }
 
-    updateWorkspaceMutation.mutate({ workspaceId: currentWorkspaceId, name: normalizedName })
+    updateWorkspaceMutation.mutate({ workspaceId, name: normalizedName })
   }
 
   const handleDeleteWorkspace = () => {
-    if (!workspace || !currentWorkspaceId) {
-      return
-    }
+    if (!workspace || !workspaceId) return
 
     const confirmed = window.confirm(`Delete "${workspace.name}" workspace? This action cannot be undone.`)
-
-    if (!confirmed) {
-      return
-    }
+    if (!confirmed) return
 
     setMessage(null)
     setErrorMessage(null)
-    deleteWorkspaceMutation.mutate(currentWorkspaceId)
+    deleteWorkspaceMutation.mutate(workspaceId)
   }
 
-  if (!currentWorkspaceId) {
+  if (!workspaceId) {
     return (
-      <section className="space-y-5">
-        <div>
-          <h2 className="text-2xl font-semibold">Workspace Settings</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Workspace route is missing. Please open a workspace URL.</p>
-        </div>
-
-        <div className="rounded-2xl border border-dashed border-border p-6">
-          <Button onClick={() => navigate(appPaths.postLogin)}>Go to Workspace</Button>
-        </div>
-      </section>
+      <div className="mx-auto max-w-3xl px-8 py-10">
+        <h1 className="text-2xl font-semibold">Workspace Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Workspace route is missing. Please open a valid workspace.</p>
+      </div>
     )
   }
 
   if (isWorkspacePending) {
     return (
-      <section className="rounded-2xl border border-border bg-card p-10 text-center text-sm text-muted-foreground">
+      <div className="mx-auto max-w-3xl px-8 py-10 text-center text-sm text-muted-foreground">
         Loading workspace settings...
-      </section>
+      </div>
     )
   }
 
   if (isWorkspaceError || !workspace) {
     return (
-      <section className="rounded-2xl border border-red-200 bg-red-50 p-10 text-center text-sm text-red-700">
-        Unable to load this workspace from URL right now. Please refresh and try again.
-      </section>
+      <div className="mx-auto max-w-3xl px-8 py-10 text-center text-sm text-red-700 bg-red-50 border border-red-200 rounded-xl">
+        Unable to load workspace settings. Please refresh and try again.
+      </div>
     )
   }
 
+  const workspaceInitials = workspace.name.slice(0, 2).toUpperCase()
+
   return (
-    <section className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-semibold">Workspace Settings</h2>
-        <p className="mt-1 text-sm text-muted-foreground">Update your workspace details or permanently delete it.</p>
-      </div>
+    <div className="mx-auto max-w-3xl px-8 py-10">
+      <header className="mb-8">
+        <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-1 text-sm text-muted-foreground">Workspace preferences, branding, and defaults.</p>
+      </header>
 
-      <form onSubmit={handleSave} className="space-y-4 rounded-2xl border border-border bg-card p-5">
-        <div className="space-y-1.5">
-          <label htmlFor="workspace-name" className="text-sm font-medium text-foreground">
-            Workspace name
-          </label>
-          <Input
-            id="workspace-name"
-            value={name}
-            onChange={(event) => {
-              if (!currentWorkspaceId) {
-                return
-              }
+      {message && <p className="mb-6 rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">{message}</p>}
+      {errorMessage && <p className="mb-6 rounded-lg bg-destructive/5 border border-destructive/20 px-4 py-3 text-sm text-destructive">{errorMessage}</p>}
 
-              setNameDraftByWorkspaceId((previous) => ({
-                ...previous,
-                [currentWorkspaceId]: event.target.value,
-              }))
-            }}
-            placeholder="Workspace name"
-            required
-          />
+      <form onSubmit={handleSave}>
+        <Section title="Workspace">
+          <Field label="Workspace name">
+            <Input value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} required />
+          </Field>
+          <Field label="Subdomain">
+            <div className="flex items-center gap-1">
+              <Input value={subdomain} onChange={(e) => setSubdomain(e.target.value)} className="rounded-r-none" />
+              <span className="rounded-md rounded-l-none border border-l-0 bg-muted px-3 py-2 text-sm text-muted-foreground">
+                .handit.app
+              </span>
+            </div>
+          </Field>
+          <Field label="Workspace logo" hint="Shown on client-facing share pages.">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-semibold">
+                {workspaceInitials}
+              </div>
+              <Button type="button" variant="outline" size="sm">
+                Upload
+              </Button>
+            </div>
+          </Field>
+        </Section>
+
+        <Section title="Share defaults" hint="Applied to every new share link unless overridden.">
+          <Toggle label="Require password by default" checked={requirePassword} onChange={setRequirePassword} />
+          <Toggle label="Show your branding on share pages" checked={showBranding} onChange={setShowBranding} />
+          <Toggle label="Notify me when a client views a share" checked={notifyViews} onChange={setNotifyViews} />
+        </Section>
+
+        <Section title="Notifications">
+          <Toggle label="Email me when clients leave feedback" checked={emailFeedback} onChange={setEmailFeedback} />
+          <Toggle label="Weekly delivery summary" checked={weeklySummary} onChange={setWeeklySummary} />
+        </Section>
+
+        <div className="mt-6">
+          <Button type="submit" disabled={updateWorkspaceMutation.isPending}>
+            {updateWorkspaceMutation.isPending ? "Saving..." : "Save changes"}
+          </Button>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>Plan: {workspace.plan}</span>
-          <span>-</span>
-          <span>{workspace.memberCount} members</span>
-        </div>
-
-        {message?.workspaceId === currentWorkspaceId && <p className="text-sm text-emerald-600">{message.text}</p>}
-        {errorMessage?.workspaceId === currentWorkspaceId && <p className="text-sm text-red-600">{errorMessage.text}</p>}
-
-        <Button type="submit" disabled={updateWorkspaceMutation.isPending || deleteWorkspaceMutation.isPending}>
-          {updateWorkspaceMutation.isPending ? "Saving..." : "Save Changes"}
-        </Button>
       </form>
 
-      <section className="space-y-3 rounded-2xl border border-red-200 bg-red-50/50 p-5">
-        <div>
-          <h3 className="text-lg font-medium text-red-700">Danger Zone</h3>
-          <p className="mt-1 text-sm text-red-600">
-            Deleting a workspace removes projects and member access for everyone in this workspace.
+      <Section title="Danger zone" className="mt-12">
+        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5">
+          <h3 className="text-sm font-semibold">Delete workspace</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Permanently delete this workspace and all projects, files, and shares.
           </p>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            className="mt-3"
+            onClick={handleDeleteWorkspace}
+            disabled={deleteWorkspaceMutation.isPending}
+          >
+            {deleteWorkspaceMutation.isPending ? "Deleting..." : "Delete workspace"}
+          </Button>
         </div>
+      </Section>
+    </div>
+  )
+}
 
-        <Button
-          type="button"
-          variant="destructive"
-          onClick={handleDeleteWorkspace}
-          disabled={updateWorkspaceMutation.isPending || deleteWorkspaceMutation.isPending}
-        >
-          {deleteWorkspaceMutation.isPending ? "Deleting..." : "Delete Workspace"}
-        </Button>
-      </section>
+function Section({
+  title,
+  hint,
+  children,
+  className,
+}: {
+  title: string
+  hint?: string
+  children: React.ReactNode
+  className?: string
+}) {
+  return (
+    <section className={cn("mb-10", className)}>
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold">{title}</h2>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div className="space-y-5">{children}</div>
     </section>
+  )
+}
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-[180px_1fr] sm:items-center">
+      <div>
+        <label className="text-sm font-medium">{label}</label>
+        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+      </div>
+      <div>{children}</div>
+    </div>
+  )
+}
+
+function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border bg-card px-4 py-3">
+      <span className="text-sm">{label}</span>
+      <Switch checked={checked} onChange={onChange} />
+    </div>
+  )
+}
+
+function Switch({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={cn(
+        "inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus:outline-none focus:ring-2 focus:ring-ring",
+        checked ? "bg-primary" : "bg-input"
+      )}
+    >
+      <span
+        className={cn(
+          "pointer-events-none block h-4 w-4 rounded-full bg-background shadow-lg transition-transform",
+          checked ? "translate-x-4" : "translate-x-0"
+        )}
+      />
+    </button>
   )
 }

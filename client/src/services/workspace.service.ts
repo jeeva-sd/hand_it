@@ -39,7 +39,8 @@ type ProjectDetailResponse = {
   project: Project
 }
 
-type MembersListResponse = {
+export type MembersListResponse = {
+  total: number
   members: WorkspaceMember[]
 }
 
@@ -115,12 +116,25 @@ export async function deleteWorkspace(workspaceId: string): Promise<DeleteWorksp
   })
 }
 
-export async function listWorkspaceMembers(workspaceId: string): Promise<WorkspaceMember[]> {
-  const response = await apiRequest<MembersListResponse>(`/workspaces/${workspaceId}/members`, {
+export async function listWorkspaceMembers(
+  workspaceId: string,
+  params?: { page?: number; size?: number; searchTerm?: string }
+): Promise<MembersListResponse> {
+  const queryParams = new URLSearchParams()
+  if (params) {
+    if (params.page !== undefined) queryParams.append("page", params.page.toString())
+    if (params.size !== undefined) queryParams.append("size", params.size.toString())
+    if (params.searchTerm !== undefined && params.searchTerm.trim() !== "") {
+      queryParams.append("searchTerm", params.searchTerm.trim())
+    }
+  }
+
+  const queryString = queryParams.toString()
+  const path = `/workspaces/${workspaceId}/members${queryString ? `?${queryString}` : ""}`
+
+  return apiRequest<MembersListResponse>(path, {
     method: "GET",
   })
-
-  return response.members
 }
 
 export async function getProjectsByWorkspace(workspaceId: string): Promise<Project[]> {
@@ -151,4 +165,37 @@ export async function selectWorkspace(workspaceId: string): Promise<Workspace> {
   })
 
   return response.workspace
+}
+
+export async function inviteWorkspaceMember(
+  workspaceId: string,
+  payload: { email: string; role: string }
+): Promise<WorkspaceMember> {
+  return apiRequest<WorkspaceMember, { workspaceId: string; email: string; role: string }>(
+    `/workspaces/${workspaceId}/members`,
+    {
+      method: "POST",
+      body: { workspaceId, email: payload.email, role: payload.role },
+    }
+  )
+}
+
+export async function updateWorkspaceMemberRole(
+  workspaceId: string,
+  memberId: string,
+  role: string
+): Promise<{ id: string; role: string }> {
+  return apiRequest<{ id: string; role: string }, { workspaceId: string; memberId: string; role: string }>(
+    `/workspaces/${workspaceId}/members/${memberId}`,
+    {
+      method: "PATCH",
+      body: { workspaceId, memberId, role },
+    }
+  )
+}
+
+export async function removeWorkspaceMember(workspaceId: string, memberId: string): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(`/workspaces/${workspaceId}/members/${memberId}`, {
+    method: "DELETE",
+  })
 }

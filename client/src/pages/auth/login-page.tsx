@@ -3,7 +3,6 @@ import { EyeIcon, EyeOffIcon, Loader2Icon } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
-import { buildPostLoginPath, storeContinuePath } from "@/app/router/post-login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getGoogleSignInUrl, loginWithPassword } from "@/services/auth.service";
@@ -42,7 +41,13 @@ export function LoginPage() {
         lastUsedWorkspace: result.lastUsedWorkspace,
       });
 
-      navigate(buildPostLoginPath(searchParams.get("continue")), { replace: true });
+      const cont = searchParams.get("continue");
+      if (cont && cont.startsWith("/")) {
+        navigate(cont, { replace: true });
+      } else {
+        const workspaceId = result.lastUsedWorkspace?.id || "default";
+        navigate(`/w/${workspaceId}/projects`, { replace: true });
+      }
     },
     onError: (error) => {
       setFormError(resolveErrorMessage(error, "Unable to sign in. Please try again."));
@@ -65,7 +70,10 @@ export function LoginPage() {
   };
 
   const handleGoogleSignIn = () => {
-    storeContinuePath(searchParams.get("continue"));
+    const cont = searchParams.get("continue");
+    if (cont) {
+      window.sessionStorage.setItem("handit.auth.continue", cont);
+    }
     window.location.assign(getGoogleSignInUrl());
   };
 

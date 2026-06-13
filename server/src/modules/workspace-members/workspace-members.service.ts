@@ -59,7 +59,6 @@ export class WorkspaceMembersService {
 
     async listMembers(payload: ListMembersInputType) {
         const workspaceId = payload.workspaceId;
-        await this.assertProWorkspace(workspaceId);
         const cached = this.cache.getList(workspaceId, payload);
         if (cached) {
             return cached;

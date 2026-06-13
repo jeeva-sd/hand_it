@@ -22,6 +22,37 @@ export class ApiError extends Error {
   }
 }
 
+export function resolveApiError(error: unknown, fallbackMessage: string = "An unexpected error occurred."): string {
+  if (!error) return fallbackMessage
+
+  if (error instanceof ApiError) {
+    return error.message
+  }
+
+  if (error && typeof error === "object") {
+    const errObj = error as any
+    if (typeof errObj.message === "string" && errObj.message.trim().length > 0) {
+      return errObj.message
+    }
+
+    if (errObj.details && typeof errObj.details === "object") {
+      const details = errObj.details
+      if (typeof details.message === "string" && details.message.trim().length > 0) {
+        return details.message
+      }
+      if (Array.isArray(details.message)) {
+        return details.message.join(", ")
+      }
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return fallbackMessage
+}
+
 function buildApiUrl(path: string): string {
   const baseUrl = appConfig.api.url.replace(/\/+$/, "")
   const normalizedPath = path.startsWith("/") ? path : `/${path}`
