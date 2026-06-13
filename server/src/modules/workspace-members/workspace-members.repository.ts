@@ -5,18 +5,15 @@ import { PrismaClientLike, PrismaTransaction } from '~/shared/types/prisma';
 
 export const MEMBER_SELECT = {
     id: true,
-    workspaceId: true,
-    userId: true,
     role: true,
     status: true,
     createdAt: true,
-    updatedAt: true,
-    user: { select: { id: true, fname: true, lname: true, email: true, status: true } }
+    user: { select: { id: true, fname: true, lname: true, email: true } }
 } satisfies Prisma.WorkspaceMemberSelect;
 
 @Injectable()
 export class WorkspaceMembersRepository {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     private txHandler(transaction?: PrismaTransaction): PrismaClientLike {
         return transaction ?? this.prisma;
@@ -109,14 +106,14 @@ export class WorkspaceMembersRepository {
             status: { not: WorkspaceMemberStatus.DELETED },
             ...(searchTerm
                 ? {
-                      user: {
-                          OR: [
-                              { fname: { contains: searchTerm } },
-                              { lname: { contains: searchTerm } },
-                              { email: { contains: searchTerm } }
-                          ]
-                      }
-                  }
+                    user: {
+                        OR: [
+                            { fname: { contains: searchTerm } },
+                            { lname: { contains: searchTerm } },
+                            { email: { contains: searchTerm } }
+                        ]
+                    }
+                }
                 : {})
         };
     }

@@ -8,15 +8,13 @@ import { AppRouter } from "@/app/router/app-router"
 export function mountApp() {
   const rootElement = document.getElementById("root")
 
-  if (!rootElement) {
-    throw new Error("Root element #root was not found.")
+  if (rootElement) {
+    createRoot(rootElement).render(
+      <StrictMode>
+        <AppProviders>
+          <AppRouter />
+        </AppProviders>
+      </StrictMode>
+    )
   }
-
-  createRoot(rootElement).render(
-    <StrictMode>
-      <AppProviders>
-        <AppRouter />
-      </AppProviders>
-    </StrictMode>
-  )
 }

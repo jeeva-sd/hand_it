@@ -29,7 +29,7 @@ export class WorkspaceMembersService {
         private readonly workspaceCache: WorkspaceCacheService,
         private readonly invitationService: WorkspaceInvitationService,
         private readonly cls: ClsService<Store>
-    ) {}
+    ) { }
 
     private get userId(): string {
         const userId = this.cls.get('userId');
@@ -144,7 +144,7 @@ export class WorkspaceMembersService {
         const updated = await this.repository.updateRole(memberId, role);
 
         this.cache.invalidateList(workspaceId);
-        this.workspaceCache.invalidateRole(workspaceId, member.userId);
+        this.workspaceCache.invalidateRole(workspaceId, member.user.id);
 
         return updated;
     }
@@ -159,7 +159,7 @@ export class WorkspaceMembersService {
             throw new NotFoundException('Member not found in this workspace');
         }
 
-        if (member.userId === currentUserId) {
+        if (member.user.id === currentUserId) {
             throw new ConflictException('You cannot remove yourself from the workspace');
         }
 
@@ -174,8 +174,8 @@ export class WorkspaceMembersService {
         await this.repository.updateStatus(memberId, WorkspaceMemberStatus.DELETED);
 
         this.cache.invalidateList(workspaceId);
-        this.workspaceCache.invalidateRole(workspaceId, member.userId);
-        this.workspaceCache.invalidateLists([member.userId]);
+        this.workspaceCache.invalidateRole(workspaceId, member.user.id);
+        this.workspaceCache.invalidateLists([member.user.id]);
         this.workspaceCache.invalidateDetail(workspaceId);
 
         return { message: 'Member removed successfully' };
